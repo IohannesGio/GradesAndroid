@@ -221,9 +221,8 @@ def return_grade_proportions() -> dict:
 
 
 @create_database
-def return_grade_proportions_by_period() -> dict:
-    '''function that returns how many times a grade appears, considering only the first digit and the current period'''
-    today = datetime.now().strftime('%Y%m%d')
+def return_grade_proportions_by_period(period: str) -> dict:
+    '''function that returns how many times a grade appears in a period, considering only the first digit'''
 
     connection = sqlite3.connect(path)
     cursor = connection.cursor()
@@ -233,28 +232,39 @@ def return_grade_proportions_by_period() -> dict:
     cursor.execute("SELECT start_date, end_date FROM periods WHERE name = 'second_period'")
     second_period = cursor.fetchone()
 
-    if first_period[0] != 'N/A' and first_period[1] != 'N/A' and first_period[0] <= today <= first_period[1]:
-        start_date, end_date = first_period
-    elif second_period[0] != 'N/A' and second_period[1] != 'N/A' and first_period[1] < today <= second_period[1]:
-        start_date, end_date = second_period
+    if first_period[0] != 'N/A' and first_period[1] != 'N/A' and second_period[0] != 'N/A' and second_period[1] != 'N/A':
+        start_date_fp, end_date_fp = first_period
+        start_date_sp, end_date_sp = second_period
     else:
-        start_date, end_date = second_period
+        connection.close()
+        return {}
 
-    command = f"""
+    command_fp = f"""
     SELECT grade 
     FROM grades 
-    WHERE date BETWEEN '{start_date}' AND '{end_date}';
+    WHERE date BETWEEN '{start_date_fp}' AND '{end_date_fp}';
     """
+
+    command_sp = f"""
+    SELECT grade 
+    FROM grades 
+    WHERE date BETWEEN '{start_date_sp}' AND '{end_date_sp}';
+    """
+
     grade_proportions_dict = {}
     for x in range(11):
         grade_proportions_dict[x] = 0
 
     try:
-        cursor.execute(command)
+        if period == "first":
+            cursor.execute(command_fp)
+        elif period == "second":
+            cursor.execute(command_sp)
+        else:
+            raise ValueError("Invalid period")
         grades = cursor.fetchall()
         for grade in grades:
             grade_proportions_dict[int(grade[0])] = grade_proportions_dict.get(int(grade[0]), 0) + 1
-
         return grade_proportions_dict
     except Exception as e:
         print(e)
@@ -264,12 +274,36 @@ def return_grade_proportions_by_period() -> dict:
 
 
 @create_database
-def return_average_by_date():
+def return_average_by_date(period: str = None):
     '''Function that returns averages by date, including rounded subject averages and their combined average.'''
-    command = """
+    connection = sqlite3.connect(path)
+    cursor = connection.cursor()
+
+    cursor.execute("SELECT start_date, end_date FROM periods WHERE name = 'first_period'")
+    first_period = cursor.fetchone()
+    cursor.execute("SELECT start_date, end_date FROM periods WHERE name = 'second_period'")
+    second_period = cursor.fetchone()
+
+    if first_period[0] != 'N/A' and first_period[1] != 'N/A' and second_period[0] != 'N/A' and second_period[1] != 'N/A':
+        start_date_fp, end_date_fp = first_period
+        start_date_sp, end_date_sp = second_period
+    else:
+        connection.close()
+        return [], []
+
+    date_filter = ""
+    if period == "first":
+        date_filter = f"WHERE date BETWEEN '{start_date_fp}' AND '{end_date_fp}'"
+    elif period == "second":
+        date_filter = f"WHERE date BETWEEN '{start_date_sp}' AND '{end_date_sp}'"
+    else:
+        raise ValueError("Invalid period")
+
+    command = f"""
     WITH cumulative_grades AS (
         SELECT date, grade, weight, subject_name
         FROM grades
+        {date_filter}
         ORDER BY date, subject_name
     ),
     cumulative_averages AS (

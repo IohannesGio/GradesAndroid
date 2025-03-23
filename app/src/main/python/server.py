@@ -90,15 +90,16 @@ def redirect():
 @app.route("/getAverageByDate", methods=['GET'])
 def get_average_by_date():
     '''get request to return the average by date'''
-    data, data_rounded = database.return_average_by_date_period()
-    return jsonify({'data': data, 'data_rounded': data_rounded}), 200
+    data_fp, data_rounded_fp = database.return_average_by_date("first")
+    data_sp, data_rounded_sp = database.return_average_by_date("second")
+    return jsonify({'data_fp': data_fp, 'data_rounded_fp': data_rounded_fp, 'data_sp': data_sp, 'data_rounded_sp': data_rounded_sp}), 200
 
 
 @app.route("/stats", methods=['GET'])
 def render_charts():
     '''redirects to stats page'''
     _, number, subject_number = database.objective_achievement_by_period()
-    return render_template("stats.html", grade_bar=json.dumps(database.return_grade_proportions()), subject_number = subject_number, number = number), 200
+    return render_template("stats.html", grade_bar_fp=json.dumps(database.return_grade_proportions_by_period("first")), grade_bar_sp=json.dumps(database.return_grade_proportions_by_period("second")), subject_number = subject_number, number = number), 200
 
 
 @app.route("/settings", methods=['GET'])

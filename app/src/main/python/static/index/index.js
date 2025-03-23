@@ -76,20 +76,30 @@ function loadContent(id) {
         .then(data => {
             document.getElementById('main-content').innerHTML = data;
             function gradesDistribution() {
-                let grades_dict = JSON.parse(document.getElementById("grade-bar").dataset.value);
+                let grades_dict = JSON.parse(document.getElementById("grade-bar-fp").dataset.value);
+                let grades_dict_sp = JSON.parse(document.getElementById("grade-bar-sp").dataset.value);
 
                 const ctx = document.getElementById('bar-grade-graph').getContext('2d');
                 const config = {
                     type: 'bar',
                     data: {
                         labels: Object.keys(grades_dict),
-                        datasets: [{
-                            label: 'Grade Proportions',
-                            data: Object.values(grades_dict),
-                            backgroundColor: '#a37cf7',
-                            borderColor: '#a37cf7',
-                            borderWidth: 1
-                        }]
+                        datasets: [
+                            {
+                                label: 'First Period',
+                                data: Object.values(grades_dict),
+                                backgroundColor: '#a37cf7',
+                                borderColor: '#a37cf7',
+                                borderWidth: 1
+                            },
+                            {
+                                label: 'Second Period',
+                                data: Object.values(grades_dict_sp),
+                                backgroundColor: '#f77c7c',
+                                borderColor: '#f77c7c',
+                                borderWidth: 1
+                            }
+                        ]
                     },
                     options: {
                         responsive: true,
@@ -133,12 +143,35 @@ function loadContent(id) {
             .then(response => response.json())
             .then(data => {
 
-                const dataMain = data.data;
-                const roundedData = data.data_rounded;
+                const dataMainFp = data.data_fp;
+                const roundedDataFp = data.data_rounded_fp;
+                const dataMainSp = data.data_sp;
+                const roundedDataSp = data.data_rounded_sp;
 
-                const labels = dataMain.map(item => item.date);
-                const mainAverages = dataMain.map(item => item.average_grade)
-                const roundedAverages = roundedData.map(item => item.average_grade);
+                const uniqueDatesFp = [...new Set(dataMainFp.map(item => item.date))].sort();
+                const uniqueDatesSp = [...new Set(dataMainSp.map(item => item.date))].sort();
+
+                const labelsFp = uniqueDatesFp.map((_, index) => `${index + 1}°`);
+                const labelsSp = uniqueDatesSp.map((_, index) => `${index + 1}°`);
+
+                const getDataMap = (dataList) => {
+                    const map = {};
+                    dataList.forEach(item => { map[item.date] = item.average_grade; });
+                    return map;
+                };
+
+                const mainFpMap = getDataMap(dataMainFp);
+                const roundedFpMap = getDataMap(roundedDataFp);
+                const mainSpMap = getDataMap(dataMainSp);
+                const roundedSpMap = getDataMap(roundedDataSp);
+
+                const mainAveragesFp = uniqueDatesFp.map(date => mainFpMap[date] || null);
+                const roundedAveragesFp = uniqueDatesFp.map(date => roundedFpMap[date] || null);
+                const mainAveragesSp = uniqueDatesSp.map(date => mainSpMap[date] || null);
+                const roundedAveragesSp = uniqueDatesSp.map(date => roundedSpMap[date] || null);
+
+                const maxLength = Math.max(labelsFp.length, labelsSp.length);
+                const labels = Array.from({ length: maxLength }, (_, index) => `${index + 1}°`);
 
                 const ctx = document.getElementById('average-grade-over-time').getContext('2d');
                 new Chart(ctx, {
@@ -146,19 +179,35 @@ function loadContent(id) {
                     data: {
                         labels: labels,
                         datasets: [{
-                            label: 'Average Grade',
-                            data: mainAverages,
+                            label: 'First Period - Average Grade',
+                            data: mainAveragesFp,
                             fill: false,
                             borderColor: '#a37cf7',
                             backgroundColor: '#a37cf7',
                             tension: 0.1
                         },
                         {
-                            label: 'Rounded Average Grade',
-                            data: roundedAverages,
+                            label: 'First Period - Rounded Average Grade',
+                            data: roundedAveragesFp,
                             fill: false,
                             borderColor: '#f774a3',
                             backgroundColor: '#f774a3',
+                            tension: 0.1
+                        },
+                        {
+                            label: 'Second Period - Average Grade',
+                            data: mainAveragesSp,
+                            fill: false,
+                            borderColor: '#77c9f7',
+                            backgroundColor: '#77c9f7',
+                            tension: 0.1
+                        },
+                        {
+                            label: 'Second Period - Rounded Average Grade',
+                            data: roundedAveragesSp,
+                            fill: false,
+                            borderColor: '#f7c977',
+                            backgroundColor: '#f7c977',
                             tension: 0.1
                         }]
                     },
