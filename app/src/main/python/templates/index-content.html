@@ -38,14 +38,20 @@
 
 <h3>Add a subject</h3>
 
-<button id="add-subject-button" type="button" onclick="showSection(event.target.id)">Add a subject</button>
+<button id="add-subject-button" type="button" onclick="showSection(event.target.id)"><span class="material-icons-outlined material-icons">
+    add
+</span></button>
 
 <div id="add-subject-section" class="add-subject-section" style="display: none;">
     <form action="/addSubject" method="post" >
         <input type="text" id="subject" name="subject" placeholder="Subject name">
         <div class="button-section">
-            <button type="submit">Add subject</button>
-            <button type="button" onclick="cancelAddSubject()">Cancel</button>
+            <button id="submit-button" type="submit">
+                <span class="material-icons-outlined material-icons">
+                    done
+                </span>
+            </button>
+            <button id="cancel-button" type="button" onclick="cancelAddSubject()">Cancel</button>
         </div>
     </form>
 </div>

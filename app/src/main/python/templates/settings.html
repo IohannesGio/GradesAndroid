@@ -11,14 +11,19 @@
             <label for="">End date</label>
             <input type="date" name="end-date-first-period" id="end-date-first-period">
             <div class="button-section">
-                <button onclick="setPeriod('first-period')" type="button">Submit</button>
-                <button onclick="cancelPeriod('first-period-form', 'first-period-button')" type="button">Cancel</button>
+                <button id="submit-button" onclick="setPeriod('first-period')" type="button"><span class="material-icons-outlined material-icons">
+                    done
+                </span></button>
+                <button id="cancel-button" onclick="cancelPeriod('first-period-form', 'first-period-button')" type="button">Cancel</button>
             </div>
         </form>
-        <p>{{periods[0][0]}} - {{periods[0][1]}}</p>
+        <p>Start: {{periods[0][0]}}</p>
+        <p>End: {{periods[0][1]}}</p>
 
         <div class="edit-section">
-            <button id="first-period-button" type="button" onclick="showPeriodSection('first-period-form', event.target.id)">Edit first period</button>
+            <button class="edit-button" id="first-period-button" type="button" onclick="showPeriodSection('first-period-form', event.target.id)"><span class="material-icons-outlined material-icons">
+                edit
+                </span>Edit</button>
         </div>
     </div>
 
@@ -30,28 +35,33 @@
             <label for="">End date</label>
             <input type="date" name="end-date-second-period" id="end-date-second-period">
             <div class="button-section">
-                <button onclick="setPeriod('second-period')" type="button">Submit</button>
-                <button onclick="cancelPeriod('second-period-form', 'second-period-button')" type="button">Cancel</button>
+                <button id="submit-button" onclick="setPeriod('second-period')" type="button"><span class="material-icons-outlined material-icons">
+                    done
+                </span></button>
+                <button id="cancel-button" onclick="cancelPeriod('second-period-form', 'second-period-button')" type="button">Cancel</button>
             </div>
         </form>
-        <p>{{periods[1][0]}} - {{periods[1][1]}}</p>
+        <p>Start: {{periods[1][0]}}</p>
+        <p>End: {{periods[1][1]}}</p>
 
         <div class="edit-section">
-            <button id="second-period-button" type="button" onclick="showPeriodSection('second-period-form', event.target.id)">Edit second period</button>
+            <button class="edit-button" id="second-period-button" type="button" onclick="showPeriodSection('second-period-form', event.target.id)"><span class="material-icons-outlined material-icons">
+                edit
+                </span>Edit</button>
         </div>
     </div>
 </div>
 
-<h3>Manage subjects and their objectives</h3>
+<h3>Manage subjects' objectives</h3>
 <div class="subject-list">
     <table>
         <tbody>
         {% for subject, objective in subjects %}
         <tr>
             <td><label id="{{subject}}" for="">{{subject}}</label></td>
-            <td><button type="button" onclick="deleteSubject('{{subject}}')">Delete</button></td>
-            <td><button type="button" onclick="renameSubject('{{subject}}')">Rename</button></td>
-            <td><button type="button" onclick="setObjective('{{subject}}')">Set objective</button></td>
+            <td><button id="objective-button" type="button" onclick="setObjective('{{subject}}')"><span class="material-icons-outlined material-icons">
+                    outlined_flag
+                    </span>Set objective</button></td>
         </tr>
         <tr>
             <td colspan="4"><label for="">Objective: {{objective}}</label></td>

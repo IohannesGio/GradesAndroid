@@ -2,19 +2,21 @@
 
 <h2>Your stats</h2>
 
-<h3>Objectives</h3>
 <!--
 <select name="" id="period-choice-objectives">
     <option value="first">First period</option>
     <option value="second">Second period</option>
 </select> -->
-<div class="objectives-section">
-    <p>You've reached completely the objective for {{number['completely reached']}} subject out of {{subject_number}}</p>
-    <p>You've reached the objective for {{number['reached']}} subject out of {{subject_number}} (if the average is rounded)</p>
-    <p>You've not reached the objective for {{number['almost reached']}} subject out of {{subject_number}} but you're not so far (only a point of distance)</p>
-    <p>You've not reached the objective for {{number['not reached']}} subject out of {{subject_number}}</p>
-    <p>We don't have enough data for {{number['not enough data']}} subject out of {{subject_number}}</p>
-</div>
+<details class="animated-details">
+    <summary><span class="section-title">Objectives</span></summary>
+    <div class="objectives-section">
+        <p>You've reached completely the objective for {{number['completely reached']}} subject out of {{subject_number}}</p>
+        <p>You've reached the objective for {{number['reached']}} subject out of {{subject_number}} (if the average is rounded)</p>
+        <p>You've not reached the objective for {{number['almost reached']}} subject out of {{subject_number}} but you're not so far (only a point of distance)</p>
+        <p>You've not reached the objective for {{number['not reached']}} subject out of {{subject_number}}</p>
+        <p>We don't have enough data for {{number['not enough data']}} subject out of {{subject_number}}</p>
+    </div>
+</details>
 
 <h3>Average grade during time</h3>
 <!--
@@ -39,3 +41,14 @@
 </div>
 <span data-value="{{grade_bar_fp}}" id="grade-bar-fp"></span>
 <span data-value="{{grade_bar_sp}}" id="grade-bar-sp"></span>
+
+<style>
+    .section-title {
+        font-size: 1.25rem;
+        font-weight: bold;
+    }
+    summary {
+        cursor: pointer;
+        padding: 0.5em;
+    }
+</style>

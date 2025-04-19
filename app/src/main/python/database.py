@@ -112,7 +112,7 @@ def return_objective(subject: str) -> str:
 @create_database
 def return_average_objective() -> str:
     '''function that returns the average objective of all subjects'''
-    command = "SELECT AVG(objective) FROM subject_list"
+    command = "SELECT ROUND(AVG(objective), 2) FROM subject_list;"
     try:
         connection = sqlite3.connect(path)
         cursor = connection.cursor()
@@ -964,7 +964,7 @@ def objective_achievement_subject_by_period(subject: str):
             return "completely reached"
         if round_custom(average) >= objective[0]:
             return "reached"
-        if round_custom(average) >= objective[0] - 1:
+        if average >= objective[0] - 1:
             return "almost reached"
         return "not reached"
     except Exception as e:

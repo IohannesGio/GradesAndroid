@@ -1,8 +1,13 @@
 package com.iohannes.grades
 
 import android.os.Bundle
+import android.webkit.JsPromptResult
+import android.webkit.JsResult
+import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.EditText
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import com.chaquo.python.Python
 import com.chaquo.python.android.AndroidPlatform
@@ -33,6 +38,58 @@ class MainActivity : AppCompatActivity() {
 
         myWebView = findViewById(R.id.webview)
         myWebView.settings.javaScriptEnabled = true
+        myWebView.webChromeClient = object : WebChromeClient() {
+            override fun onJsAlert(
+                view: WebView?,
+                url: String?,
+                message: String?,
+                result: JsResult?
+            ): Boolean {
+                AlertDialog.Builder(this@MainActivity)
+                    .setMessage(message)
+                    .setPositiveButton(android.R.string.ok) { _, _ -> result?.confirm() }
+                    .setCancelable(false)
+                    .create()
+                    .show()
+                return true
+            }
+
+            override fun onJsConfirm(
+                view: WebView?,
+                url: String?,
+                message: String?,
+                result: JsResult?
+            ): Boolean {
+                AlertDialog.Builder(this@MainActivity)
+                    .setMessage(message)
+                    .setPositiveButton("OK") { _, _ -> result?.confirm() }
+                    .setNegativeButton("Cancel") { _, _ -> result?.cancel() }
+                    .create()
+                    .show()
+                return true
+            }
+
+            override fun onJsPrompt(
+                view: WebView?,
+                url: String?,
+                message: String?,
+                defaultValue: String?,
+                result: JsPromptResult?
+            ): Boolean {
+                val input = EditText(this@MainActivity)
+                input.setText(defaultValue)
+
+                AlertDialog.Builder(this@MainActivity)
+                    .setMessage(message)
+                    .setView(input)
+                    .setPositiveButton("OK") { _, _ -> result?.confirm(input.text.toString()) }
+                    .setNegativeButton("Cancel") { _, _ -> result?.cancel() }
+                    .create()
+                    .show()
+                return true
+            }
+        }
+
         Thread.sleep(2000) // TODO try not to use this!!!!
 
         myWebView.webViewClient = object : WebViewClient() {

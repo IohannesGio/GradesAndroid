@@ -1,10 +1,12 @@
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
 <table>
     <thead>
     <tr>
         <th>Grade</th>
         <th>Date</th>
-        <th>Weight</th>
         <th>Type</th>
+        <th>%</th>
     </tr>
     </thead>
     <tbody>
@@ -12,10 +14,14 @@
     <tr>
         <td>{{grade}}</td>
         <td>{{date}}</td>
-        <td>{{weight}}</td>
         <td>{{type}}</td>
-        <td><button type="button" id="delete-grade-{{id}}" onclick="deleteGrade(event.target.id)">Delete</button></td>
-        <td><button type="button" onclick="editGrade('{{id}}', '{{grade}}','{{date}}','{{weight}}','{{type}}')">Edit</button></td>
+        <td>{{weight}}</td>
+        <td><button class="delete-button" type="button" id="delete-grade-{{id}}" onclick="deleteGrade(event.target.id)"><span class="material-icons-outlined material-icons">
+                delete
+                </span>Delete</button></td>
+        <td><button class="edit-button" type="button" onclick="editGrade('{{id}}', '{{grade}}','{{date}}','{{weight}}','{{type}}')"><span class="material-icons-outlined material-icons">
+                edit
+                </span>Edit</button></td>
     </tr>
     {% endfor %}
     </tbody>

@@ -144,3 +144,55 @@ form > * {
 .periods > * {
     padding: 10px;
 }
+
+.material-icons {
+    font-family: 'Material Icons';
+    font-weight: lighter;
+    font-style: normal;
+    font-size: 24px;
+    display: inline-flex;
+    text-transform: none;
+    letter-spacing: normal;
+    word-wrap: normal;
+    white-space: nowrap;
+    direction: ltr;
+
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+}
+
+#add-subject-button {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 60px;
+    height: 60px;
+}
+
+#submit-button {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #4CAF50;
+}
+
+#cancel-button {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #ff7154;
+}
+
+.edit-button {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #faba4b;
+}
+
+#objective-button {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #4CAF50;
+}

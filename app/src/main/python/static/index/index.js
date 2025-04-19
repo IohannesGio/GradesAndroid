@@ -272,65 +272,6 @@ function redirect(subject) {
     .catch(err => console.error('error: ', err));
 }
 
-function deleteSubject(subject) {
-
-    var data = {
-        subject_to_delete: subject
-    };
-
-    fetch("/deleteSubject", {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(data)
-    })
-    .then(res => res.json())
-    .then(data => {
-    if (data.ok) {
-        window.alert(data.message);
-        loadContent('settings');
-    }
-    else {
-        window.alert(data.message);
-    }
-    })
-    .catch(err => console.error('error: ', err));
-}
-
-function renameSubject(subject) {
-
-    var new_name = prompt("Insert new name for subject: " + subject).toUpperCase();
-
-    if (new_name == null) {
-        return false;
-    }
-
-    var data = {
-        subject_to_rename: subject,
-        new_name: new_name
-    };
-
-    fetch("/renameSubject", {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(data)
-    })
-    .then(res => res.json())
-    .then(data => {
-    if (data.ok) {
-        window.alert(data.message);
-        loadContent('settings');
-    }
-    else {
-        window.alert(data.message);
-    }
-    })
-    .catch(err => console.error('error: ', err));
-}
-
 function setObjective(subject) {
 
     var new_objective = prompt("Insert new objective for " + subject);
