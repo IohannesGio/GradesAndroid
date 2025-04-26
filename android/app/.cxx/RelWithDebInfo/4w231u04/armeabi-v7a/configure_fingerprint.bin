@@ -3,53 +3,61 @@ Q
 O/home/user/flutter/packages/flutter_tools/gradle/src/main/groovy/CMakeLists.txtC
 A
 <<<<<<< HEAD
-?com.android.build.gradle.internal.cxx.io.EncodedFileFingerPrint	ëÏÔ’ç2¤ õ¢Áõæ2f
+?com.android.build.gradle.internal.cxx.io.EncodedFileFingerPrint	ï¿½ï¿½Ô’ï¿½2ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½2f
 d
-b/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/armeabi-v7a/additional_project_files.txt	ëÏÔ’ç2 ñ–þç2c
+b/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/armeabi-v7a/additional_project_files.txt	ï¿½ï¿½Ô’ï¿½2 ï¿½ï¿½ï¿½ï¿½2c
 a
-_/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/armeabi-v7a/android_gradle_build.json	ëÏÔ’ç2š ó–þç2h
+_/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/armeabi-v7a/android_gradle_build.json	ï¿½ï¿½Ô’ï¿½2ï¿½ ï¿½ï¿½ï¿½ï¿½2h
 f
-d/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/armeabi-v7a/android_gradle_build_mini.json	ëÏÔ’ç2± ô–þç2U
+d/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/armeabi-v7a/android_gradle_build_mini.json	ï¿½ï¿½Ô’ï¿½2ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½2U
 S
-Q/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/armeabi-v7a/build.ninja	ëÏÔ’ç2íº ä–þç2Y
+Q/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/armeabi-v7a/build.ninja	ï¿½ï¿½Ô’ï¿½2ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½2Y
 W
-U/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/armeabi-v7a/build.ninja.txt	ëÏÔ’ç2^
+U/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/armeabi-v7a/build.ninja.txt	ï¿½ï¿½Ô’ï¿½2^
 \
-Z/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/armeabi-v7a/build_file_index.txt	ëÏÔ’ç2O ô–þç2_
+Z/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/armeabi-v7a/build_file_index.txt	ï¿½ï¿½Ô’ï¿½2
+O ï¿½ï¿½ï¿½ï¿½ï¿½2_
 ]
-[/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/armeabi-v7a/compile_commands.json	ëÏÔ’ç2	c
+[/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/armeabi-v7a/compile_commands.json	ï¿½ï¿½Ô’ï¿½2	c
 a
-_/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/armeabi-v7a/compile_commands.json.bin	ëÏÔ’ç2
+_/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/armeabi-v7a/compile_commands.json.bin	ï¿½ï¿½Ô’ï¿½2
 i
 g
-e/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/armeabi-v7a/metadata_generation_command.txt	ëÏÔ’ç2‰ ô–þç2\
+e/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/armeabi-v7a/metadata_generation_command.txt	ï¿½ï¿½Ô’ï¿½2ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½2\
 Z
-X/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/armeabi-v7a/prefab_config.json	ëÏÔ’ç2( ô–þç2a
+X/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/armeabi-v7a/prefab_config.json	ï¿½ï¿½Ô’ï¿½2
+( ï¿½ï¿½ï¿½ï¿½ï¿½2a
 _
-]/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/armeabi-v7a/symbol_folder_index.txt	ëÏÔ’ç2T ô–þç2
+]/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/armeabi-v7a/symbol_folder_index.txt	ï¿½ï¿½Ô’ï¿½2
+
+T ï¿½ï¿½ï¿½ï¿½ï¿½2
 =======
-?com.android.build.gradle.internal.cxx.io.EncodedFileFingerPrint	÷¾öç2¤ õ¢Áõæ2f
+?com.android.build.gradle.internal.cxx.io.EncodedFileFingerPrint	ï¿½ï¿½ï¿½ï¿½ï¿½2ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½2f
 d
-b/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/armeabi-v7a/additional_project_files.txt	÷¾öç2 ñ–þç2c
+b/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/armeabi-v7a/additional_project_files.txt	ï¿½ï¿½Ô’ï¿½2 ï¿½ï¿½ï¿½ï¿½2c
 a
-_/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/armeabi-v7a/android_gradle_build.json	÷¾öç2š ó–þç2h
+_/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/armeabi-v7a/android_gradle_build.json	ï¿½ï¿½Ô’ï¿½2ï¿½ ï¿½ï¿½ï¿½ï¿½2h
 f
-d/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/armeabi-v7a/android_gradle_build_mini.json	÷¾öç2± ô–þç2U
+d/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/armeabi-v7a/android_gradle_build_mini.json	ï¿½ï¿½Ô’ï¿½2ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½2U
 S
-Q/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/armeabi-v7a/build.ninja	÷¾öç2íº ä–þç2Y
+Q/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/armeabi-v7a/build.ninja	ï¿½ï¿½Ô’ï¿½2ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½2Y
 W
-U/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/armeabi-v7a/build.ninja.txt	÷¾öç2^
+U/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/armeabi-v7a/build.ninja.txt	ï¿½ï¿½Ô’ï¿½2^
 \
-Z/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/armeabi-v7a/build_file_index.txt	÷¾öç2O ô–þç2_
+Z/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/armeabi-v7a/build_file_index.txt	ï¿½ï¿½Ô’ï¿½2
+O ï¿½ï¿½ï¿½ï¿½ï¿½2_
 ]
-[/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/armeabi-v7a/compile_commands.json	÷¾öç2	c
+[/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/armeabi-v7a/compile_commands.json	ï¿½ï¿½Ô’ï¿½2	c
 a
-_/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/armeabi-v7a/compile_commands.json.bin	÷¾öç2
+_/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/armeabi-v7a/compile_commands.json.bin	ï¿½ï¿½Ô’ï¿½2
 i
 g
-e/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/armeabi-v7a/metadata_generation_command.txt	÷¾öç2‰ ô–þç2\
+e/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/armeabi-v7a/metadata_generation_command.txt	ï¿½ï¿½Ô’ï¿½2ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½2\
 Z
-X/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/armeabi-v7a/prefab_config.json	÷¾öç2( ô–þç2a
+X/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/armeabi-v7a/prefab_config.json	ï¿½ï¿½Ô’ï¿½2
+( ï¿½ï¿½ï¿½ï¿½ï¿½2a
 _
-]/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/armeabi-v7a/symbol_folder_index.txt	÷¾öç2T ô–þç2
+]/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/armeabi-v7a/symbol_folder_index.txt	ï¿½ï¿½Ô’ï¿½2
+
+T ï¿½ï¿½ï¿½ï¿½ï¿½2
 >>>>>>> ee72eba (feature: nuova icona)
