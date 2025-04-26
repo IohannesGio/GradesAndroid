@@ -5,8 +5,14 @@ import 'package:shared_preferences/shared_preferences.dart'; // Importa SharedPr
 import 'package:fl_chart/fl_chart.dart'; // Importa la libreria fl_chart
 import 'dart:math'; // Importa per max
 import 'package:dynamic_color/dynamic_color.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'dart:io';
 
 void main() {
+  if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+  }
   runApp(MyApp());
 }
 
