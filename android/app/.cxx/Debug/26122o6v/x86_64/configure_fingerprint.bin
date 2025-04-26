@@ -2,6 +2,7 @@ C/C++ Structured LogS
 Q
 O/home/user/flutter/packages/flutter_tools/gradle/src/main/groovy/CMakeLists.txtC
 A
+<<<<<<< HEAD
 ?com.android.build.gradle.internal.cxx.io.EncodedFileFingerPrint	ï¿½ï¿½Ï’ï¿½2ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½2X
 V
 T/home/user/myapp/android/app/.cxx/Debug/26122o6v/x86_64/additional_project_files.txt	ï¿½ï¿½Ï’ï¿½2 ï¿½ï¿½ï¿½ï¿½ï¿½2U
@@ -30,3 +31,29 @@ Q
 O/home/user/myapp/android/app/.cxx/Debug/26122o6v/x86_64/symbol_folder_index.txt	ï¿½ï¿½Ï’ï¿½2
 
 F ï¿½ï¿½ï¿½ï¿½ï¿½2
+=======
+?com.android.build.gradle.internal.cxx.io.EncodedFileFingerPrint	öýóç2¤ õ¢Áõæ2X
+V
+T/home/user/myapp/android/app/.cxx/Debug/26122o6v/x86_64/additional_project_files.txt	öýóç2 ¬ôÈöæ2U
+S
+Q/home/user/myapp/android/app/.cxx/Debug/26122o6v/x86_64/android_gradle_build.json	öýóç2þ ±ôÈöæ2Z
+X
+V/home/user/myapp/android/app/.cxx/Debug/26122o6v/x86_64/android_gradle_build_mini.json	öýóç2• ´ôÈöæ2G
+E
+C/home/user/myapp/android/app/.cxx/Debug/26122o6v/x86_64/build.ninja	öýóç2•º üóÈöæ2K
+I
+G/home/user/myapp/android/app/.cxx/Debug/26122o6v/x86_64/build.ninja.txt	öýóç2P
+N
+L/home/user/myapp/android/app/.cxx/Debug/26122o6v/x86_64/build_file_index.txt	öýóç2O ´ôÈöæ2Q
+O
+M/home/user/myapp/android/app/.cxx/Debug/26122o6v/x86_64/compile_commands.json	öýóç2	U
+S
+Q/home/user/myapp/android/app/.cxx/Debug/26122o6v/x86_64/compile_commands.json.bin	öýóç2
+[
+Y
+W/home/user/myapp/android/app/.cxx/Debug/26122o6v/x86_64/metadata_generation_command.txt	öýóç2Ì ´ôÈöæ2N
+L
+J/home/user/myapp/android/app/.cxx/Debug/26122o6v/x86_64/prefab_config.json	öýóç2( ´ôÈöæ2S
+Q
+O/home/user/myapp/android/app/.cxx/Debug/26122o6v/x86_64/symbol_folder_index.txt	öýóç2F ´ôÈöæ2
+>>>>>>> ee72eba (feature: nuova icona)
