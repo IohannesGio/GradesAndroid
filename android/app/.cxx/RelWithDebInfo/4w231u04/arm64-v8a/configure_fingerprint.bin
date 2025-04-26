@@ -2,54 +2,31 @@ C/C++ Structured LogS
 Q
 O/home/user/flutter/packages/flutter_tools/gradle/src/main/groovy/CMakeLists.txtC
 A
-<<<<<<< HEAD
-?com.android.build.gradle.internal.cxx.io.EncodedFileFingerPrint	ÚÏÔ’ç2¤ õ¢Áõæ2d
+?com.android.build.gradle.internal.cxx.io.EncodedFileFingerPrint	ï¿½ï¿½Ô’ï¿½2ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½2d
 b
-`/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/arm64-v8a/additional_project_files.txt	ÚÏÔ’ç2 ô’þç2a
+`/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/arm64-v8a/additional_project_files.txt	ï¿½ï¿½Ô’ï¿½2 ï¿½ï¿½ï¿½ï¿½ï¿½2a
 _
-]/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/arm64-v8a/android_gradle_build.json	ÚÏÔ’ç2– Þ“þç2f
+]/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/arm64-v8a/android_gradle_build.json	ï¿½ï¿½Ô’ï¿½2ï¿½ Þ“ï¿½ï¿½ï¿½2f
 d
-b/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/arm64-v8a/android_gradle_build_mini.json	ÚÏÔ’ç2­ ÷“þç2S
+b/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/arm64-v8a/android_gradle_build_mini.json	ï¿½ï¿½Ô’ï¿½2ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½2S
 Q
-O/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/arm64-v8a/build.ninja	ÚÏÔ’ç2ãº œ’þç2W
+O/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/arm64-v8a/build.ninja	ï¿½ï¿½Ô’ï¿½2ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½2W
 U
-S/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/arm64-v8a/build.ninja.txt	ÚÏÔ’ç2\
+S/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/arm64-v8a/build.ninja.txt	ï¿½ï¿½Ô’ï¿½2\
 Z
-X/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/arm64-v8a/build_file_index.txt	ÚÏÔ’ç2O ÷“þç2]
+X/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/arm64-v8a/build_file_index.txt	ï¿½ï¿½Ô’ï¿½2
+O ï¿½ï¿½ï¿½ï¿½ï¿½2]
 [
-Y/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/arm64-v8a/compile_commands.json	ÚÏÔ’ç2	a
+Y/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/arm64-v8a/compile_commands.json	ï¿½ï¿½Ô’ï¿½2	a
 _
-]/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/arm64-v8a/compile_commands.json.bin	ÚÏÔ’ç2
+]/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/arm64-v8a/compile_commands.json.bin	ï¿½ï¿½Ô’ï¿½2
 g
 e
-c/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/arm64-v8a/metadata_generation_command.txt	ÚÏÔ’ç2ÿ ÷“þç2Z
+c/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/arm64-v8a/metadata_generation_command.txt	ï¿½ï¿½Ô’ï¿½2ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½2Z
 X
-V/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/arm64-v8a/prefab_config.json	ÚÏÔ’ç2( ÷“þç2_
+V/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/arm64-v8a/prefab_config.json	ï¿½ï¿½Ô’ï¿½2
+( ï¿½ï¿½ï¿½ï¿½ï¿½2_
 ]
-[/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/arm64-v8a/symbol_folder_index.txt	ÛÏÔ’ç2R ÷“þç2
-=======
-?com.android.build.gradle.internal.cxx.io.EncodedFileFingerPrint	ß¾öç2¤ õ¢Áõæ2d
-b
-`/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/arm64-v8a/additional_project_files.txt	ß¾öç2 ô’þç2a
-_
-]/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/arm64-v8a/android_gradle_build.json	ß¾öç2– Þ“þç2f
-d
-b/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/arm64-v8a/android_gradle_build_mini.json	ß¾öç2­ ÷“þç2S
-Q
-O/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/arm64-v8a/build.ninja	ß¾öç2ãº œ’þç2W
-U
-S/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/arm64-v8a/build.ninja.txt	ß¾öç2\
-Z
-X/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/arm64-v8a/build_file_index.txt	ß¾öç2O ÷“þç2]
-[
-Y/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/arm64-v8a/compile_commands.json	ß¾öç2	a
-_
-]/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/arm64-v8a/compile_commands.json.bin	ß¾öç2
-g
-e
-c/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/arm64-v8a/metadata_generation_command.txt	ß¾öç2ÿ ÷“þç2Z
-X
-V/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/arm64-v8a/prefab_config.json	ß¾öç2( ÷“þç2_
-]
-[/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/arm64-v8a/symbol_folder_index.txt	ß¾öç2R ÷“þç2
->>>>>>> ee72eba (feature: nuova icona)
+[/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/arm64-v8a/symbol_folder_index.txt	ï¿½ï¿½Ô’ï¿½2
+
+R ï¿½ï¿½ï¿½ï¿½ï¿½2
