@@ -3,7 +3,6 @@ Q
 O/home/user/flutter/packages/flutter_tools/gradle/src/main/groovy/CMakeLists.txtC
 A
 <<<<<<< HEAD
-<<<<<<< HEAD
 ?com.android.build.gradle.internal.cxx.io.EncodedFileFingerPrint	зот▓Г2╓ У╒аУФ2d
 b
 `/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/arm64-v8a/additional_project_files.txt	зот▓Г2 Т▓Ч█Г2a
@@ -30,34 +29,27 @@ V/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/arm64-v8a/prefab_conf
 [/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/arm64-v8a/symbol_folder_index.txt	шот▓Г2R В⌠Ч█Г2
 =======
 ?com.android.build.gradle.internal.cxx.io.EncodedFileFingerPrint	ъ╬Ж░Г2╓ У╒аУФ2d
-=======
-?com.android.build.gradle.internal.cxx.io.EncodedFileFingerPrint	зот▓Г2╓ У╒аУФ2d
->>>>>>> d038c05 (feature: supporto alla dark mode e ai colori dinamici)
 b
-`/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/arm64-v8a/additional_project_files.txt	зот▓Г2 Т▓Ч█Г2a
+`/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/arm64-v8a/additional_project_files.txt	ъ╬Ж░Г2 Т▓Ч█Г2a
 _
-]/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/arm64-v8a/android_gradle_build.json	зот▓Г2√ ч⌠Ч█Г2f
+]/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/arm64-v8a/android_gradle_build.json	ъ╬Ж░Г2√ ч⌠Ч█Г2f
 d
-b/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/arm64-v8a/android_gradle_build_mini.json	зот▓Г2╜ В⌠Ч█Г2S
+b/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/arm64-v8a/android_gradle_build_mini.json	ъ╬Ж░Г2╜ В⌠Ч█Г2S
 Q
-O/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/arm64-v8a/build.ninja	зот▓Г2Ц╨ °▓Ч█Г2W
+O/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/arm64-v8a/build.ninja	ъ╬Ж░Г2Ц╨ °▓Ч█Г2W
 U
-S/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/arm64-v8a/build.ninja.txt	зот▓Г2\
+S/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/arm64-v8a/build.ninja.txt	ъ╬Ж░Г2\
 Z
-X/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/arm64-v8a/build_file_index.txt	зот▓Г2O В⌠Ч█Г2]
+X/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/arm64-v8a/build_file_index.txt	ъ╬Ж░Г2O В⌠Ч█Г2]
 [
-Y/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/arm64-v8a/compile_commands.json	зот▓Г2	a
+Y/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/arm64-v8a/compile_commands.json	ъ╬Ж░Г2	a
 _
-]/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/arm64-v8a/compile_commands.json.bin	зот▓Г2
+]/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/arm64-v8a/compile_commands.json.bin	ъ╬Ж░Г2
 g
 e
-c/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/arm64-v8a/metadata_generation_command.txt	зот▓Г2Ъ В⌠Ч█Г2Z
+c/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/arm64-v8a/metadata_generation_command.txt	ъ╬Ж░Г2Ъ В⌠Ч█Г2Z
 X
-V/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/arm64-v8a/prefab_config.json	зот▓Г2( В⌠Ч█Г2_
+V/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/arm64-v8a/prefab_config.json	ъ╬Ж░Г2( В⌠Ч█Г2_
 ]
-<<<<<<< HEAD
 [/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/arm64-v8a/symbol_folder_index.txt	ъ╬Ж░Г2R В⌠Ч█Г2
 >>>>>>> ee72eba (feature: nuova icona)
-=======
-[/home/user/myapp/android/app/.cxx/RelWithDebInfo/4w231u04/arm64-v8a/symbol_folder_index.txt	шот▓Г2R В⌠Ч█Г2
->>>>>>> d038c05 (feature: supporto alla dark mode e ai colori dinamici)
