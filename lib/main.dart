@@ -95,10 +95,12 @@ class _HomePageState extends State<HomePage> {
   String _overallRoundedAveragePeriod =
       'N/A'; // Media generale del periodo corrente (arrotondata)
   String _averageObjective = 'N/A'; // Obiettivo generale
+  double _passingGrade = 6.0; // Default, poi caricato dalle preferenze
 
   @override
   void initState() {
     super.initState();
+    _loadPassingGrade();
     _loadData();
   }
 
@@ -180,6 +182,13 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
+  Future<void> _loadPassingGrade() async {
+    final grades = await SettingsPage.loadPassingAndMaxGrades();
+    setState(() {
+      _passingGrade = grades['passing_grade'] ?? 6.0;
+    });
+  }
+
   void _showAddSubjectDialog() {
     final nameController = TextEditingController();
     String? errorText;
@@ -244,6 +253,26 @@ class _HomePageState extends State<HomePage> {
 
   // Metodo per costruire le card statistiche nella HomePage
   Widget _buildStatCard(String label, String value) {
+    Color _getColorForValue(String label, String value) {
+      double? val = double.tryParse(value);
+      if (val == null) return Colors.grey.withOpacity(0.2); // Se è N/A o errore
+      if (label == 'Obiettivo') {
+        return Colors.blue.withOpacity(0.2); // Blu chiaro per obiettivo
+      }
+      return val >= _passingGrade
+          ? Colors.green.withOpacity(0.2)
+          : Colors.red.withOpacity(0.2);
+    }
+
+    Color _getTextColorForBackground(String label, String value) {
+      double? val = double.tryParse(value);
+      if (val == null) return Colors.grey;
+      if (label == 'Obiettivo') {
+        return Colors.blue;
+      }
+      return val >= _passingGrade ? Colors.green : Colors.red;
+    }
+
     return Expanded(
       child: Card(
         elevation: 1,
@@ -255,7 +284,20 @@ class _HomePageState extends State<HomePage> {
             children: [
               Text(label, style: Theme.of(context).textTheme.labelMedium),
               const SizedBox(height: 6),
-              Text(value, style: Theme.of(context).textTheme.titleLarge),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: _getColorForValue(label, value),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  value,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: _getTextColorForBackground(label, value),
+                  ),
+                ),
+              ),
             ],
           ),
         ),
@@ -265,6 +307,26 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(context) {
+
+    Color _getColorForValue(String label, String value) {
+      double? val = double.tryParse(value);
+      if (val == null) return Colors.grey.withOpacity(0.2);
+      if (label == 'Obiettivo') {
+        return Colors.blue.withOpacity(0.2);
+      }
+      return val >= _passingGrade ? Colors.green.withOpacity(0.2) : Colors.red.withOpacity(0.2);
+    }
+
+    Color _getTextColorForBackground(String label, String value) {
+      double? val = double.tryParse(value);
+      if (val == null) return Colors.grey;
+      if (label == 'Obiettivo') {
+        return Colors.blue;
+      }
+      return val >= _passingGrade ? Colors.green : Colors.red;
+    }
+
+
     return Scaffold(
       appBar: AppBar(title: const Text('Home')),
       body: Column(
@@ -321,18 +383,19 @@ class _HomePageState extends State<HomePage> {
                             Text(subjectName,
                                 style: Theme.of(context).textTheme.titleMedium),
                             // Mostra la media della materia con stile prominente, senza etichetta
-                            Text(
-                              average, // Mostra la media del periodo corrente per la materia
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleMedium
-                                  ?.copyWith(
-                                    // Stile simile a quello prominente
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .primary, // Colore primario
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: _getColorForValue('Media', average),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                average,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: _getTextColorForBackground('Media', average),
+                                ),
+                              ),
                             ),
                           ],
                         ),
@@ -873,6 +936,26 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
       displayedValue = value;
     }
 
+    Color _getColorForValue(String label, String value) {
+      double? val = double.tryParse(value);
+      if (val == null) return Colors.grey.withOpacity(0.2);
+      if (label == 'Obiettivo') {
+        return Colors.blue.withOpacity(0.2);
+      }
+      return val >= _passingGrade
+          ? Colors.green.withOpacity(0.2)
+          : Colors.red.withOpacity(0.2);
+    }
+
+    Color _getTextColorForBackground(String label, String value) {
+      double? val = double.tryParse(value);
+      if (val == null) return Colors.grey;
+      if (label == 'Obiettivo') {
+        return Colors.blue;
+      }
+      return val >= _passingGrade ? Colors.green : Colors.red;
+    }
+
     return Expanded(
       child: Card(
         elevation: 1,
@@ -888,13 +971,21 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
               children: [
                 Text(label, style: Theme.of(context).textTheme.labelMedium),
                 const SizedBox(height: 6),
-                Text(
-                  displayedValue, // Usa displayedValue
-                  // Applica uno stile leggermente più grande per il valore
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleLarge
-                      ?.copyWith(fontSize: 20), // Esempio: fontSize 20
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: _getColorForValue(label, displayedValue),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    displayedValue,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 20,
+                      color: _getTextColorForBackground(label, displayedValue),
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -1040,7 +1131,31 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
                     return Card(
                       // Avvolgi ListTile in una Card per un aspetto migliore
                       child: ListTile(
-                        title: Text('${g.grade} (${g.type})'),
+                        title: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: g.grade >= _passingGrade
+                                    ? Colors.green.withOpacity(0.2)
+                                    : Colors.red.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                g.grade.toString(),
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: g.grade >= _passingGrade
+                                      ? Colors.green
+                                      : Colors.red,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text('(${g.type})'), // Tipo di voto accanto
+                          ],
+                        ),
                         // Mostra la data formattata in DD-MM-YYYY nella ListTile
                         subtitle: Text(
                             'Data: ${formatIntDateToDisplay(g.date)} - Peso: ${g.weight}'), // Usa la helper function
@@ -1354,7 +1469,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
   }
 
   // Costruisce il grafico a linee per l'andamento della media
-  Widget _buildAverageTrendChart() {
+  Widget _buildAverageTrendChart(BuildContext context) {
     // Usiamo _historicalOriginalAverages e _historicalRoundedAverages che contengono i dati combinati
     if (_historicalOriginalAverages.isEmpty &&
         _historicalRoundedAverages.isEmpty) {
@@ -1383,24 +1498,36 @@ class _StatisticsPageState extends State<StatisticsPage> {
     // Crea i FlSpot usando l'indice all'interno di ciascun periodo come valore X
     final List<FlSpot> firstPeriodAvgSpots =
         List.generate(firstPeriodOriginal.length, (index) {
-      return FlSpot(index.toDouble(),
-          firstPeriodOriginal[index]['average_grade'] as double);
+      return FlSpot(
+        index.toDouble(),
+        double.parse((firstPeriodOriginal[index]['average_grade'] as double).toStringAsFixed(2)),
+      );
     });
+
     final List<FlSpot> firstPeriodRoundedAvgSpots =
         List.generate(firstPeriodRounded.length, (index) {
-      return FlSpot(index.toDouble(),
-          firstPeriodRounded[index]['average_grade'] as double);
+      return FlSpot(
+        index.toDouble(),
+        double.parse((firstPeriodRounded[index]['average_grade'] as double).toStringAsFixed(2)),
+      );
     });
+
     final List<FlSpot> secondPeriodAvgSpots =
         List.generate(secondPeriodOriginal.length, (index) {
-      return FlSpot(index.toDouble(),
-          secondPeriodOriginal[index]['average_grade'] as double);
+      return FlSpot(
+        index.toDouble(),
+        double.parse((secondPeriodOriginal[index]['average_grade'] as double).toStringAsFixed(2)),
+      );
     });
+
     final List<FlSpot> secondPeriodRoundedAvgSpots =
         List.generate(secondPeriodRounded.length, (index) {
-      return FlSpot(index.toDouble(),
-          secondPeriodRounded[index]['average_grade'] as double);
+      return FlSpot(
+        index.toDouble(),
+        double.parse((secondPeriodRounded[index]['average_grade'] as double).toStringAsFixed(2)),
+      );
     });
+
 
     // Determina i valori min/max per l'asse Y
     double minY = 0;
@@ -1425,6 +1552,9 @@ class _StatisticsPageState extends State<StatisticsPage> {
         max(firstPeriodOriginal.length, secondPeriodOriginal.length);
     final double maxX = (maxPoints > 0 ? maxPoints - 1 : 0).toDouble();
 
+    Brightness brightness = Theme.of(context).brightness;
+    bool isDarkMode = brightness == Brightness.dark;
+
     return AspectRatio(
       aspectRatio: 1.5, // Rapporto d'aspetto del grafico
       child: Padding(
@@ -1432,6 +1562,28 @@ class _StatisticsPageState extends State<StatisticsPage> {
             const EdgeInsets.only(right: 18, left: 12, top: 24, bottom: 12),
         child: LineChart(
           LineChartData(
+            lineTouchData: LineTouchData(
+              touchTooltipData: LineTouchTooltipData(
+                tooltipRoundedRadius: 8,
+                getTooltipColor: (spot) {
+                  final brightness = Theme.of(context).brightness;
+                  return brightness == Brightness.dark
+                      ? Colors.grey[800]!.withOpacity(0.9)
+                      : Colors.white.withOpacity(0.9);
+                },
+                getTooltipItems: (touchedSpots) {
+                  return touchedSpots.map((spot) {
+                    return LineTooltipItem(
+                      '${spot.y.toStringAsFixed(2)}',
+                      TextStyle(
+                        color: spot.bar.color ?? Colors.black,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    );
+                  }).toList();
+                },
+              ),
+            ),
             gridData: FlGridData(show: true),
             titlesData: FlTitlesData(
               leftTitles: AxisTitles(
@@ -1596,6 +1748,27 @@ class _StatisticsPageState extends State<StatisticsPage> {
         child: BarChart(
           BarChartData(
             barGroups: barGroups,
+            barTouchData: BarTouchData(
+              touchTooltipData: BarTouchTooltipData(
+                tooltipRoundedRadius: 8,
+                getTooltipColor: (group) {
+                  final brightness = Theme.of(context).brightness;
+                  return brightness == Brightness.dark
+                      ? Colors.grey[800]!.withOpacity(0.9)
+                      : Colors.white.withOpacity(0.9);
+                },
+                getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                  return BarTooltipItem(
+                    '${rod.toY.toStringAsFixed(2)}',
+                    TextStyle(
+                      color: rod.color ?? Colors.black,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  );
+                },
+              ),
+            ),
+
             gridData: FlGridData(show: true),
             titlesData: FlTitlesData(
               leftTitles: AxisTitles(
@@ -1691,7 +1864,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 16),
-                    _buildAverageTrendChart(), // Non ha bisogno di await qui
+                    _buildAverageTrendChart(context), // Non ha bisogno di await qui
                     const SizedBox(height: 16),
                     // Legenda per il grafico a linee
                     Column(
