@@ -2,62 +2,27 @@ C/C++ Structured LogS
 Q
 O/home/user/flutter/packages/flutter_tools/gradle/src/main/groovy/CMakeLists.txtC
 A
-<<<<<<< HEAD
-?com.android.build.gradle.internal.cxx.io.EncodedFileFingerPrint	ï¿½ï¿½Ï’ï¿½2ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½2U
+?com.android.build.gradle.internal.cxx.io.EncodedFileFingerPrint	à©ø–ç2¤ õ¢Áõæ2U
 S
-Q/home/user/myapp/android/app/.cxx/Debug/26122o6v/x86/additional_project_files.txt	ï¿½ï¿½Ï’ï¿½2 ï¿½ï¿½ï¿½ï¿½ï¿½2R
+Q/home/user/myapp/android/app/.cxx/Debug/26122o6v/x86/additional_project_files.txt	à©ø–ç2 Ü©ø–ç2R
 P
-N/home/user/myapp/android/app/.cxx/Debug/26122o6v/x86/android_gradle_build.json	ï¿½ï¿½Ï’ï¿½2ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½2W
+N/home/user/myapp/android/app/.cxx/Debug/26122o6v/x86/android_gradle_build.json	à©ø–ç2ø Ý©ø–ç2W
 U
-S/home/user/myapp/android/app/.cxx/Debug/26122o6v/x86/android_gradle_build_mini.json	ï¿½ï¿½Ï’ï¿½2ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½2D
+S/home/user/myapp/android/app/.cxx/Debug/26122o6v/x86/android_gradle_build_mini.json	à©ø–ç2 Þ©ø–ç2D
 B
-@/home/user/myapp/android/app/.cxx/Debug/26122o6v/x86/build.ninja	ï¿½ï¿½Ï’ï¿½2ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½2H
+@/home/user/myapp/android/app/.cxx/Debug/26122o6v/x86/build.ninja	à©ø–ç2†º Ï©ø–ç2H
 F
-D/home/user/myapp/android/app/.cxx/Debug/26122o6v/x86/build.ninja.txt	ï¿½ï¿½Ï’ï¿½2M
+D/home/user/myapp/android/app/.cxx/Debug/26122o6v/x86/build.ninja.txt	à©ø–ç2M
 K
-I/home/user/myapp/android/app/.cxx/Debug/26122o6v/x86/build_file_index.txt	ï¿½ï¿½Ï’ï¿½2
-O ï¿½ï¿½ï¿½ï¿½ï¿½2N
+I/home/user/myapp/android/app/.cxx/Debug/26122o6v/x86/build_file_index.txt	à©ø–ç2O Þ©ø–ç2N
 L
-J/home/user/myapp/android/app/.cxx/Debug/26122o6v/x86/compile_commands.json	ï¿½ï¿½Ï’ï¿½2	R
+J/home/user/myapp/android/app/.cxx/Debug/26122o6v/x86/compile_commands.json	à©ø–ç2	R
 P
-N/home/user/myapp/android/app/.cxx/Debug/26122o6v/x86/compile_commands.json.bin	ï¿½ï¿½Ï’ï¿½2
+N/home/user/myapp/android/app/.cxx/Debug/26122o6v/x86/compile_commands.json.bin	à©ø–ç2
 X
 V
-T/home/user/myapp/android/app/.cxx/Debug/26122o6v/x86/metadata_generation_command.txt	ï¿½ï¿½Ï’ï¿½2ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½2K
+T/home/user/myapp/android/app/.cxx/Debug/26122o6v/x86/metadata_generation_command.txt	à©ø–ç2½ Þ©ø–ç2K
 I
-G/home/user/myapp/android/app/.cxx/Debug/26122o6v/x86/prefab_config.json	ï¿½ï¿½Ï’ï¿½2
-( ï¿½ï¿½ï¿½ï¿½ï¿½2P
+G/home/user/myapp/android/app/.cxx/Debug/26122o6v/x86/prefab_config.json	à©ø–ç2( Þ©ø–ç2P
 N
-L/home/user/myapp/android/app/.cxx/Debug/26122o6v/x86/symbol_folder_index.txt	ï¿½ï¿½Ï’ï¿½2
-
-C ï¿½ï¿½ï¿½ï¿½ï¿½2
-=======
-?com.android.build.gradle.internal.cxx.io.EncodedFileFingerPrint	ï¿½ï¿½ï¿½ï¿½2ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½2U
-S
-Q/home/user/myapp/android/app/.cxx/Debug/26122o6v/x86/additional_project_files.txt	ï¿½ï¿½Ï’ï¿½2 ï¿½ï¿½ï¿½ï¿½ï¿½2R
-P
-N/home/user/myapp/android/app/.cxx/Debug/26122o6v/x86/android_gradle_build.json	ï¿½ï¿½Ï’ï¿½2ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½2W
-U
-S/home/user/myapp/android/app/.cxx/Debug/26122o6v/x86/android_gradle_build_mini.json	ï¿½ï¿½Ï’ï¿½2ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½2D
-B
-@/home/user/myapp/android/app/.cxx/Debug/26122o6v/x86/build.ninja	ï¿½ï¿½Ï’ï¿½2ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½2H
-F
-D/home/user/myapp/android/app/.cxx/Debug/26122o6v/x86/build.ninja.txt	ï¿½ï¿½Ï’ï¿½2M
-K
-I/home/user/myapp/android/app/.cxx/Debug/26122o6v/x86/build_file_index.txt	ï¿½ï¿½Ï’ï¿½2
-O ï¿½ï¿½ï¿½ï¿½ï¿½2N
-L
-J/home/user/myapp/android/app/.cxx/Debug/26122o6v/x86/compile_commands.json	ï¿½ï¿½Ï’ï¿½2	R
-P
-N/home/user/myapp/android/app/.cxx/Debug/26122o6v/x86/compile_commands.json.bin	ï¿½ï¿½Ï’ï¿½2
-X
-V
-T/home/user/myapp/android/app/.cxx/Debug/26122o6v/x86/metadata_generation_command.txt	ï¿½ï¿½Ï’ï¿½2ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½2K
-I
-G/home/user/myapp/android/app/.cxx/Debug/26122o6v/x86/prefab_config.json	ï¿½ï¿½Ï’ï¿½2
-( ï¿½ï¿½ï¿½ï¿½ï¿½2P
-N
-L/home/user/myapp/android/app/.cxx/Debug/26122o6v/x86/symbol_folder_index.txt	ï¿½ï¿½ï¿½ï¿½2
-
-C ï¿½ï¿½ï¿½ï¿½ï¿½2
->>>>>>> ee72eba (feature: nuova icona)
+L/home/user/myapp/android/app/.cxx/Debug/26122o6v/x86/symbol_folder_index.txt	à©ø–ç2C Þ©ø–ç2
