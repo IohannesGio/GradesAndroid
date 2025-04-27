@@ -284,17 +284,24 @@ class _HomePageState extends State<HomePage> {
             children: [
               Text(label, style: Theme.of(context).textTheme.labelMedium),
               const SizedBox(height: 6),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: _getColorForValue(label, value),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  value,
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: _getTextColorForBackground(label, value),
+              SizedBox(
+                width: 80,
+                height: 40,
+                child:
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: _getColorForValue(label, value),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    textAlign: TextAlign.center,
+                    value,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: _getTextColorForBackground(label, value),
+                    ),
                   ),
                 ),
               ),
@@ -353,51 +360,55 @@ class _HomePageState extends State<HomePage> {
               itemCount: _subjects.length,
               itemBuilder: (_, i) {
                 final subjectName = _subjects[i].$1;
-                final objective = _subjects[i].$2; // Obiettivo della materia
-                final average =
-                    _subjects[i].$3; // Media della materia del periodo corrente
+                final average = _subjects[i].$3;
 
                 return Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  child:
-                      // Avvolgi il Container con un Hero widget
-                      Hero(
-                    tag:
-                        subjectName, // Usa il nome della materia come tag unico
-                    child: InkWell(
-                      onTap: () => _navigateToSubjectDetails(subjectName),
-                      borderRadius: BorderRadius.circular(16),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color:
-                              Theme.of(context).colorScheme.secondaryContainer,
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        padding: const EdgeInsets.all(16),
-                        child: Row(
-                          // Usa Row per allineare nome e media
-                          mainAxisAlignment: MainAxisAlignment
-                              .spaceBetween, // Spazia tra nome e media
-                          children: [
-                            Text(subjectName,
-                                style: Theme.of(context).textTheme.titleMedium),
-                            // Mostra la media della materia con stile prominente, senza etichetta
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: _getColorForValue('Media', average),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                average,
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: _getTextColorForBackground('Media', average),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  child: InkWell(
+                    onTap: () => _navigateToSubjectDetails(subjectName),
+                    borderRadius: BorderRadius.circular(20),
+                    child: Hero(
+                      tag: subjectName,
+                      child: Material(
+                        color: Colors.transparent,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.secondaryContainer,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          padding: const EdgeInsets.all(10),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 4),
+                                child: Text(
+                                subjectName,
+                                style: Theme.of(context).textTheme.titleMedium,
                                 ),
                               ),
-                            ),
-                          ],
+                              SizedBox(
+                                width: 80,
+                                height: 40,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: _getColorForValue('Media', average),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Text(
+                                    average,
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: _getTextColorForBackground('Media', average),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -406,6 +417,7 @@ class _HomePageState extends State<HomePage> {
               },
             ),
           ),
+
         ],
       ),
       // Correzione: Usa FloatingActionButton.extended
@@ -971,22 +983,26 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
               children: [
                 Text(label, style: Theme.of(context).textTheme.labelMedium),
                 const SizedBox(height: 6),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: _getColorForValue(label, displayedValue),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    displayedValue,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 20,
-                      color: _getTextColorForBackground(label, displayedValue),
+                SizedBox(
+                  width: 80,
+                  height: 40,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: _getColorForValue(label, value), // Assicurati che 'value' sia corretto
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      value, // Qui passi la media o altro testo
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: _getTextColorForBackground(label, value),
+                      ),
                     ),
                   ),
-                ),
+                )
               ],
             ),
           ),
