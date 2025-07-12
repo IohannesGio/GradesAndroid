@@ -1329,7 +1329,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
 
       if (_selectedSubject == 'Tutte le materie') {
         firstPeriodCounts =
-            await dbHelper.returnGradeProportionsByPeriod('first_period');
+            await dbHelper.returnGradeProportionsByPeriod('first');
         secondPeriodCounts =
             await dbHelper.returnGradeProportionsByPeriod('second_period');
       } else {
