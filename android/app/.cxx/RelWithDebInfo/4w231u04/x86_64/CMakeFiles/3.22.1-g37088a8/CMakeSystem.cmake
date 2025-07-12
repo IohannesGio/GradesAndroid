@@ -1,6 +1,6 @@
-set(CMAKE_HOST_SYSTEM "Linux-6.6.72+")
+set(CMAKE_HOST_SYSTEM "Linux-6.6.93+")
 set(CMAKE_HOST_SYSTEM_NAME "Linux")
-set(CMAKE_HOST_SYSTEM_VERSION "6.6.72+")
+set(CMAKE_HOST_SYSTEM_VERSION "6.6.93+")
 set(CMAKE_HOST_SYSTEM_PROCESSOR "x86_64")
 
 include("/home/user/.androidsdkroot/ndk/26.3.11579264/build/cmake/android.toolchain.cmake")
