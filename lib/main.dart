@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'database_helper.dart'; // Assicurati che questo import punti al tuo file database_helper.dart
-import 'package:intl/intl.dart'; // Importa il pacchetto intl per la formattazione della data
-import 'package:shared_preferences/shared_preferences.dart'; // Importa SharedPreferences per salvare i periodi e i voti min/max
-import 'package:fl_chart/fl_chart.dart'; // Importa la libreria fl_chart
-import 'dart:math'; // Importa per max
+import 'database_helper.dart';
+import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:fl_chart/fl_chart.dart';
+import 'dart:math';
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'dart:io';
@@ -420,12 +420,11 @@ class _HomePageState extends State<HomePage> {
 
         ],
       ),
-      // Correzione: Usa FloatingActionButton.extended
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showAddSubjectDialog,
         icon: const Icon(Icons.add),
-        label: const Text('Nuova Materia'), // Aggiunta l'etichetta
-        tooltip: 'Aggiungi Nuova Materia', // Aggiornato il tooltip
+        label: const Text('Nuova Materia'),
+        tooltip: 'Aggiungi Nuova Materia',
       ),
     );
   }
@@ -1304,117 +1303,42 @@ class _StatisticsPageState extends State<StatisticsPage> {
       _secondPeriodGradeDistribution = {};
     });
     try {
-      // Passa null per "Tutte le materie" o il nome della materia selezionata
-      // NOTA: La funzione returnAverageByDatePeriod nel database_helper.dart
-      // sembra calcolare la media generale (di tutte le materie) per un periodo.
-      // Per il grafico di andamento generale, chiamiamo questa funzione per entrambi i periodi.
-      // Se _selectedSubject non è 'Tutte le materie', dovremmo forse usare una funzione diversa
-      // che calcoli l'andamento della media per una singola materia?
-      // Basandoci sulla richiesta ("media (generale, di tutte le materie)"), assumiamo
-      // che il grafico di andamento sia sempre generale, indipendentemente dalla materia selezionata nel dropdown.
-      // Il dropdown influenzerà solo il grafico a barre.
+      // Dichiarazione delle variabili per contenere i risultati delle medie
+      (List<Map<String, dynamic>>, List<Map<String, dynamic>>)
+          firstPeriodAverages;
+      (List<Map<String, dynamic>>, List<Map<String, dynamic>>)
+          secondPeriodAverages;
 
-      // Carica i dati per il grafico di andamento della media generale
-      // Chiamiamo returnAverageByDatePeriod per il primo e secondo periodo esplicitamente
-      final firstPeriodAverages =
-          await dbHelper.returnAverageByDatePeriod(periodName: 'first_period');
-      final secondPeriodAverages =
-          await dbHelper.returnAverageByDatePeriod(periodName: 'second_period');
-
-      // Carica i dati per il grafico a barre della distribuzione dei voti
-      // Questa funzione nel database_helper.dart non prende il nome della materia.
-      // Se vogliamo filtrare per materia, dovremmo modificare returnGradeProportionsByPeriod
-      // o implementare la logica di filtro qui.
-      // Basandoci sulla richiesta ("secondo è un semplice grafico a barre in cui viengono mostrati i voti in base a quante volte compaiono come puoi vedere nell'immagine"),
-      // e sull'immagine che sembra mostrare voti per una materia,
-      // modifichiamo la logica per filtrare i voti PRIMA di contare la distribuzione.
-      // La funzione returnGradeProportionsByPeriod nel database_helper (3).dart
-      // conta le proporzioni per un periodo ('first'/'second') su *tutti* i voti.
-      // Dobbiamo adattare questa logica per filtrare per materia se necessario.
-
-      // Opzione 1 (Modifica database_helper): Aggiungi un parametro subjectName a returnGradeProportionsByPeriod.
-      // Opzione 2 (Elabora qui): Recupera tutti i voti (filtrati per materia), poi conta le proporzioni qui.
-      // Scegliamo l'opzione 2 per non modificare il database_helper fornito.
-
-      List<Grade> gradesForDistribution = [];
+      // Controlla la materia selezionata per decidere quale funzione chiamare per il grafico di andamento
       if (_selectedSubject == 'Tutte le materie') {
-        // Recupera tutti i voti
-        final allSubjects = await dbHelper.listSubjects();
-        for (var subjectTuple in allSubjects) {
-          final subjectGrades = await dbHelper.listGrades(subjectTuple.$1);
-          gradesForDistribution.addAll(subjectGrades);
-        }
+        firstPeriodAverages = await dbHelper.returnAverageByDatePeriod(
+            periodName: 'first_period');
+        secondPeriodAverages = await dbHelper.returnAverageByDatePeriod(
+            periodName: 'second_period');
       } else {
-        // Recupera voti per la materia selezionata
-        gradesForDistribution = await dbHelper.listGrades(_selectedSubject!);
+        firstPeriodAverages = await dbHelper.returnAverageBySubjectAndPeriod(
+            periodName: 'first_period', subjectName: _selectedSubject!);
+        secondPeriodAverages = await dbHelper.returnAverageBySubjectAndPeriod(
+            periodName: 'second_period', subjectName: _selectedSubject!);
       }
 
-      // Ora, conta le proporzioni per periodo dai voti filtrati
-      final periods = await SettingsPage._loadPeriodsFromPreferences();
-      int? firstPeriodStartInt;
-      int? firstPeriodEndInt;
-      int? secondPeriodStartInt;
-      int? secondPeriodEndInt;
+      // Logica per il grafico a barre di distribuzione dei voti
+      // Qui dobbiamo chiamare la funzione corretta in base a _selectedSubject
+      Map<int, int> firstPeriodCounts;
+      Map<int, int> secondPeriodCounts;
 
-      if (periods != null) {
-        try {
-          if (periods.containsKey('first_period_start') &&
-              periods.containsKey('first_period_end')) {
-            firstPeriodStartInt = int.parse(DateFormat('yyyyMMdd').format(
-                DateFormat('dd-MM-yyyy')
-                    .parse(periods['first_period_start']!)));
-            firstPeriodEndInt = int.parse(DateFormat('yyyyMMdd').format(
-                DateFormat('dd-MM-yyyy').parse(periods['first_period_end']!)));
-          }
-          if (periods.containsKey('second_period_start') &&
-              periods.containsKey('second_period_end')) {
-            secondPeriodStartInt = int.parse(DateFormat('yyyyMMdd').format(
-                DateFormat('dd-MM-yyyy')
-                    .parse(periods['second_period_start']!)));
-            secondPeriodEndInt = int.parse(DateFormat('yyyyMMdd').format(
-                DateFormat('dd-MM-yyyy').parse(periods['second_period_end']!)));
-          }
-        } catch (e) {
-          print(
-              'Errore nel parsing delle date dei periodi da SharedPreferences per distribuzione voti: $e');
-        }
+      if (_selectedSubject == 'Tutte le materie') {
+        firstPeriodCounts =
+            await dbHelper.returnGradeProportionsByPeriod('first_period');
+        secondPeriodCounts =
+            await dbHelper.returnGradeProportionsByPeriod('second_period');
+      } else {
+        firstPeriodCounts = await dbHelper.returnGradeProportionsByPeriodAndSubject(
+            'first', _selectedSubject!);
+        secondPeriodCounts = await dbHelper.returnGradeProportionsByPeriodAndSubject(
+            'second', _selectedSubject!);
       }
 
-      Map<int, int> firstPeriodCounts = {};
-      Map<int, int> secondPeriodCounts = {};
-      int maxGradeValue = 0; // Per definire l'asse X del grafico a barre
-
-      // Inizializza i conteggi per tutti i voti interi da 0 al voto massimo consentito (es. 10)
-      final gradesSettings = await SettingsPage.loadPassingAndMaxGrades();
-      final int maxPossibleGrade = gradesSettings['max_grade']?.toInt() ?? 10;
-
-      for (int i = 0; i <= maxPossibleGrade; i++) {
-        firstPeriodCounts[i] = 0;
-        secondPeriodCounts[i] = 0;
-      }
-
-      for (var grade in gradesForDistribution) {
-        final gradeIntPart =
-            grade.grade.floor(); // Considera solo la parte intera
-        maxGradeValue = max(
-            maxGradeValue, gradeIntPart); // Aggiorna il voto massimo trovato
-
-        // Controlla in quale periodo rientra il voto
-        if (firstPeriodStartInt != null &&
-            firstPeriodEndInt != null &&
-            grade.date >= firstPeriodStartInt &&
-            grade.date <= firstPeriodEndInt) {
-          firstPeriodCounts[gradeIntPart] =
-              (firstPeriodCounts[gradeIntPart] ?? 0) + 1;
-        } else if (secondPeriodStartInt != null &&
-            secondPeriodEndInt != null &&
-            grade.date >= secondPeriodStartInt &&
-            grade.date <= secondPeriodEndInt) {
-          secondPeriodCounts[gradeIntPart] =
-              (secondPeriodCounts[gradeIntPart] ?? 0) + 1;
-        }
-        // I voti fuori dai periodi definiti non vengono conteggiati per i grafici a barre per periodo
-      }
 
       setState(() {
         // Per il grafico di andamento, combiniamo i dati dei due periodi
@@ -1875,7 +1799,9 @@ class _StatisticsPageState extends State<StatisticsPage> {
                     ),
                     const SizedBox(height: 24),
                     Text(
-                      'Andamento della Media Generale nel Tempo', // Aggiornato titolo grafico
+                      _selectedSubject == 'Tutte le materie'
+                          ? 'Andamento della Media Generale nel Tempo'
+                          : 'Andamento Media: $_selectedSubject',
                       style: Theme.of(context).textTheme.titleLarge,
                       textAlign: TextAlign.center,
                     ),

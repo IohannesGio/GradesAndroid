@@ -447,6 +447,61 @@ class DatabaseHelper {
     }
   }
 
+  /// Ritorna una mappa con la proporzione dei voti (solo la parte intera) per periodo e materia.
+  Future<Map<int, int>> returnGradeProportionsByPeriodAndSubject(
+      String periodName, String subjectName) async {
+    final db = await database;
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    int? maxGradeFromPrefs = prefs.getDouble("max_grade")?.toInt();
+    int maxGrade = maxGradeFromPrefs ?? 10;
+
+    Map<int, int> gradeProportions = {for (var i = 0; i <= maxGrade; i++) i: 0};
+    final subjectUpper = subjectName.toUpperCase();
+
+    try {
+      // Ottieni le date del periodo specificato
+      final periodData = await db.query('periods',
+          where: 'name = ?',
+          whereArgs: [
+            periodName == 'first' ? 'first_period' : 'second_period'
+          ]);
+
+      if (periodData.isEmpty) return gradeProportions; // Periodo non trovato
+
+      final period = Period.fromMap(periodData.first);
+      final startDate = period.startDate;
+      final endDate = period.endDate;
+
+      if (startDate == null || endDate == null) {
+        print('Date per il periodo $periodName non impostate.');
+        return gradeProportions; // Date non valide ('N/A' nel DB Python)
+      }
+
+      // Ottieni i voti nel range di date E per la materia specifica
+      final List<Map<String, dynamic>> gradesMaps = await db.query(
+        'grades',
+        columns: ['grade'],
+        where: 'date BETWEEN ? AND ? AND subject_name = ?', // Aggiunto filtro materia
+        whereArgs: [startDate, endDate, subjectUpper],
+      );
+
+      // Conta le proporzioni
+      for (var map in gradesMaps) {
+        final gradeValue = map['grade'] as double;
+        final gradeIntPart = gradeValue.floor(); // Prende solo la parte intera
+        if (gradeProportions.containsKey(gradeIntPart)) {
+          gradeProportions[gradeIntPart] =
+              gradeProportions[gradeIntPart]! + 1;
+        }
+      }
+      return gradeProportions;
+    } catch (e) {
+      print(
+          'Errore in returnGradeProportionsByPeriodAndSubject (Materia: $subjectName, Periodo: $periodName): $e');
+      return gradeProportions; // Ritorna la mappa (possibilmente vuota o parziale)
+    }
+  }
+
   // --- Funzioni per le Medie Complessive (return_average_by_date, etc.) ---
   // Queste funzioni usano query SQL complesse (CTE).
   // La traduzione diretta è possibile con rawQuery, ma la logica di arrotondamento
@@ -790,6 +845,158 @@ class DatabaseHelper {
       print(
           'Errore in returnAverageByDatePeriod (Periodo cercato: ${periodName ?? "corrente"}, determinato: $determinedPeriodName): $e');
       // Considera di loggare anche startDate e endDate se possibile
+      return (<Map<String, dynamic>>[], <Map<String, dynamic>>[]);
+    }
+  }
+
+  /// Ritorna le medie cumulative per data (originali e arrotondate) per una materia specifica,
+  /// basandosi sul periodo corrente o su un periodo specificato.
+  /// Simula il calcolo delle medie per una materia specifica nel periodo.
+  /// Se `periodName` è null, determina il periodo corrente.
+  Future<(List<Map<String, dynamic>>, List<Map<String, dynamic>>)>
+      returnAverageBySubjectAndPeriod(
+          {String? periodName, required String subjectName}) async {
+    final db = await database;
+    int? startDate;
+    int? endDate;
+    String determinedPeriodName = 'N/A'; // Per logging
+    final subjectUpper = subjectName.toUpperCase();
+
+    try {
+      Period? targetPeriod;
+      // Se un nome periodo è fornito, usalo
+      if (periodName != null && periodName.isNotEmpty) {
+        // Validazione nome periodo
+        if (periodName != 'first_period' && periodName != 'second_period') {
+          print(
+              "Errore: Nome periodo non valido '$periodName'. Usare 'first_period' o 'second_period'.");
+          return (<Map<String, dynamic>>[], <Map<String, dynamic>>[]);
+        }
+        // Recupera dati del periodo specificato
+        final periodData = await db
+            .query('periods', where: 'name = ?', whereArgs: [periodName]);
+        if (periodData.isNotEmpty) {
+          targetPeriod = Period.fromMap(periodData.first);
+          determinedPeriodName = targetPeriod.name;
+        } else {
+          // Non dovrebbe succedere se il DB è inizializzato correttamente
+          print(
+              "Errore critico: Periodo specificato '$periodName' non trovato nel DB.");
+          return (<Map<String, dynamic>>[], <Map<String, dynamic>>[]);
+        }
+      } else {
+        // Se non è fornito un nome, determina quello corrente
+        targetPeriod = await _getCurrentPeriodDates(); // Usa la funzione helper
+        if (targetPeriod != null) {
+          determinedPeriodName = targetPeriod.name;
+          print("Periodo corrente determinato: $determinedPeriodName");
+        } else {
+          // Gestione fallback se non si trova il periodo corrente
+          print(
+              "Avviso: Impossibile determinare il periodo corrente. Tentativo di fallback...");
+          // Prova a usare il secondo periodo, poi il primo, se hanno date valide
+          final periodsData = await db.query('periods',
+              orderBy: 'name DESC'); // Leggi second, then first
+          if (periodsData.isNotEmpty) {
+            for (var pData in periodsData) {
+              final fallbackPeriod = Period.fromMap(pData);
+              if (fallbackPeriod.startDate != null &&
+                  fallbackPeriod.endDate != null) {
+                targetPeriod = fallbackPeriod;
+                determinedPeriodName = targetPeriod.name;
+                print(
+                    "Usando periodo di fallback con date valide: $determinedPeriodName");
+                break; // Trovato un fallback valido
+              }
+            }
+          }
+          // Se ancora non si trova un periodo valido dopo il fallback
+          if (targetPeriod == null) {
+            print(
+                "Errore: Nessun periodo (corrente o fallback) con date valide trovato.");
+            return (<Map<String, dynamic>>[], <Map<String, dynamic>>[]);
+          }
+        }
+      }
+
+      // Ottieni le date di inizio e fine dal periodo determinato (o fallback)
+      startDate = targetPeriod.startDate;
+      endDate = targetPeriod.endDate;
+
+      // Verifica che le date siano valide
+      if (startDate == null || endDate == null) {
+        print(
+            "Errore: Date per il periodo '$determinedPeriodName' non impostate o non valide.");
+        return (<Map<String, dynamic>>[], <Map<String, dynamic>>[]);
+      }
+
+      // Query SQL per la materia specifica
+      final String sqlCommand = """
+            WITH relevant_grades AS ( -- Filtra voti rilevanti per il periodo, peso E materia
+                SELECT date, grade, weight, subject_name
+                FROM grades
+                WHERE date BETWEEN $startDate AND $endDate
+                  AND weight > 0
+                  AND subject_name = ? -- Filtra per materia
+            ),
+            cumulative_grades AS ( -- Calcola somme cumulative per materia/data (ora solo la materia specificata)
+                SELECT
+                    r1.date,
+                    r1.subject_name,
+                    r1.grade,
+                    r1.weight,
+                    (SELECT SUM(r2.grade * r2.weight) FROM relevant_grades r2 WHERE r2.date <= r1.date) as cumulative_weighted_sum,
+                    (SELECT SUM(r2.weight) FROM relevant_grades r2 WHERE r2.date <= r1.date) as cumulative_weight
+                FROM relevant_grades r1
+            ),
+            cumulative_averages AS ( -- Calcola media cumulativa per materia/data (ora solo la materia specificata)
+                SELECT
+                    date,
+                    subject_name,
+                    cumulative_weighted_sum * 1.0 / cumulative_weight AS average_grade
+                FROM cumulative_grades
+                WHERE cumulative_weight > 0 -- Evita divisione per zero
+                GROUP BY date, subject_name -- Ottieni l'ultima media per quella data/materia
+            )
+            -- Seleziona solo le medie cumulative per la materia
+            SELECT date, subject_name, average_grade
+            FROM cumulative_averages
+            ORDER BY date ASC; -- Ordina per data
+            """; //
+
+      final List<Map<String, dynamic>> data = await db.rawQuery(
+          sqlCommand, [subjectUpper]); // Passa il nome della materia
+
+      // Elaborazione dati: Creiamo le liste per medie originali e arrotondate
+      List<Map<String, dynamic>> finalOriginalAverages = [];
+      List<Map<String, dynamic>> finalRoundedAverages = [];
+
+      for (var record in data) {
+        final date = record['date'] as int;
+        final average = record['average_grade'] as double?;
+
+        if (average == null || average.isNaN || average.isInfinite)
+          continue; // Salta medie non valide
+
+        // Aggiungi alla lista delle medie originali
+        finalOriginalAverages.add({'date': date, 'average_grade': average});
+
+        // Calcola e aggiungi alla lista delle medie arrotondate
+        final roundedAverage = roundCustom(average).toDouble();
+        finalRoundedAverages
+            .add({'date': date, 'average_grade': roundedAverage});
+      }
+
+      // Le query dovrebbero già ordinarle per data, ma riordiniamo per sicurezza
+      finalOriginalAverages
+          .sort((a, b) => (a['date'] as int).compareTo(b['date'] as int));
+      finalRoundedAverages
+          .sort((a, b) => (a['date'] as int).compareTo(b['date'] as int));
+
+      return (finalOriginalAverages, finalRoundedAverages);
+    } catch (e) {
+      print(
+          'Errore in returnAverageBySubjectAndPeriod (Materia: $subjectName, Periodo cercato: ${periodName ?? "corrente"}, determinato: $determinedPeriodName): $e');
       return (<Map<String, dynamic>>[], <Map<String, dynamic>>[]);
     }
   }
