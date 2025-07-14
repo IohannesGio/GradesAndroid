@@ -7,6 +7,7 @@ import 'dart:math';
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'dart:io';
+import 'diary_page.dart';
 
 void main() {
   if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
@@ -50,7 +51,12 @@ class MainNavigation extends StatefulWidget {
 
 class _MainNavigationState extends State<MainNavigation> {
   int _currentIndex = 0;
-  final _pages = [HomePage(), StatisticsPage(), SettingsPage()];
+  final List<StatefulWidget> _pages = [
+    HomePage(),
+    StatisticsPage(),
+    DiaryPage(),
+    SettingsPage()
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -59,9 +65,6 @@ class _MainNavigationState extends State<MainNavigation> {
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentIndex,
         onDestinationSelected: (index) => setState(() => _currentIndex = index),
-        // Le icone standard di Material Design (come Icons.home, Icons.bar_chart, Icons.settings)
-        // hanno automaticamente l'animazione di riempimento/contorno quando selezionate.
-        // Non è necessario fare modifiche qui per ottenere l'effetto desiderato.
         destinations: const [
           NavigationDestination(
               icon: Icon(Icons.home_outlined),
@@ -71,6 +74,10 @@ class _MainNavigationState extends State<MainNavigation> {
               icon: Icon(Icons.bar_chart_outlined),
               selectedIcon: Icon(Icons.bar_chart),
               label: 'Statistiche'),
+          NavigationDestination(
+              icon: Icon(Icons.book_outlined),
+              selectedIcon: Icon(Icons.book),
+              label: 'Diario'),
           NavigationDestination(
               icon: Icon(Icons.settings_outlined),
               selectedIcon: Icon(Icons.settings),
@@ -287,9 +294,9 @@ class _HomePageState extends State<HomePage> {
               SizedBox(
                 width: 80,
                 height: 40,
-                child:
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                   decoration: BoxDecoration(
                     color: _getColorForValue(label, value),
                     borderRadius: BorderRadius.circular(10),
@@ -314,14 +321,15 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(context) {
-
     Color _getColorForValue(String label, String value) {
       double? val = double.tryParse(value);
       if (val == null) return Colors.grey.withOpacity(0.2);
       if (label == 'Obiettivo') {
         return Colors.blue.withOpacity(0.2);
       }
-      return val >= _passingGrade ? Colors.green.withOpacity(0.2) : Colors.red.withOpacity(0.2);
+      return val >= _passingGrade
+          ? Colors.green.withOpacity(0.2)
+          : Colors.red.withOpacity(0.2);
     }
 
     Color _getTextColorForBackground(String label, String value) {
@@ -332,7 +340,6 @@ class _HomePageState extends State<HomePage> {
       }
       return val >= _passingGrade ? Colors.green : Colors.red;
     }
-
 
     return Scaffold(
       appBar: AppBar(title: const Text('Home')),
@@ -363,7 +370,8 @@ class _HomePageState extends State<HomePage> {
                 final average = _subjects[i].$3;
 
                 return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   child: InkWell(
                     onTap: () => _navigateToSubjectDetails(subjectName),
                     borderRadius: BorderRadius.circular(20),
@@ -373,7 +381,9 @@ class _HomePageState extends State<HomePage> {
                         color: Colors.transparent,
                         child: Container(
                           decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.secondaryContainer,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .secondaryContainer,
                             borderRadius: BorderRadius.circular(20),
                           ),
                           padding: const EdgeInsets.all(10),
@@ -381,17 +391,20 @@ class _HomePageState extends State<HomePage> {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 4),
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 4),
                                 child: Text(
-                                subjectName,
-                                style: Theme.of(context).textTheme.titleMedium,
+                                  subjectName,
+                                  style:
+                                      Theme.of(context).textTheme.titleMedium,
                                 ),
                               ),
                               SizedBox(
                                 width: 80,
                                 height: 40,
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 8),
                                   decoration: BoxDecoration(
                                     color: _getColorForValue('Media', average),
                                     borderRadius: BorderRadius.circular(10),
@@ -402,7 +415,8 @@ class _HomePageState extends State<HomePage> {
                                     style: TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.bold,
-                                      color: _getTextColorForBackground('Media', average),
+                                      color: _getTextColorForBackground(
+                                          'Media', average),
                                     ),
                                   ),
                                 ),
@@ -417,7 +431,6 @@ class _HomePageState extends State<HomePage> {
               },
             ),
           ),
-
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
@@ -986,9 +999,11 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
                   width: 80,
                   height: 40,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                     decoration: BoxDecoration(
-                      color: _getColorForValue(label, value), // Assicurati che 'value' sia corretto
+                      color: _getColorForValue(
+                          label, value), // Assicurati che 'value' sia corretto
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
@@ -1304,10 +1319,14 @@ class _StatisticsPageState extends State<StatisticsPage> {
     });
     try {
       // Dichiarazione delle variabili per contenere i risultati delle medie
-      (List<Map<String, dynamic>>, List<Map<String, dynamic>>)
-          firstPeriodAverages;
-      (List<Map<String, dynamic>>, List<Map<String, dynamic>>)
-          secondPeriodAverages;
+      (
+        List<Map<String, dynamic>>,
+        List<Map<String, dynamic>>
+      ) firstPeriodAverages;
+      (
+        List<Map<String, dynamic>>,
+        List<Map<String, dynamic>>
+      ) secondPeriodAverages;
 
       // Controlla la materia selezionata per decidere quale funzione chiamare per il grafico di andamento
       if (_selectedSubject == 'Tutte le materie') {
@@ -1329,16 +1348,17 @@ class _StatisticsPageState extends State<StatisticsPage> {
 
       if (_selectedSubject == 'Tutte le materie') {
         firstPeriodCounts =
-            await dbHelper.returnGradeProportionsByPeriod('first');
+            await dbHelper.returnGradeProportionsByPeriod('first_period');
         secondPeriodCounts =
             await dbHelper.returnGradeProportionsByPeriod('second_period');
       } else {
-        firstPeriodCounts = await dbHelper.returnGradeProportionsByPeriodAndSubject(
-            'first', _selectedSubject!);
-        secondPeriodCounts = await dbHelper.returnGradeProportionsByPeriodAndSubject(
-            'second', _selectedSubject!);
+        firstPeriodCounts =
+            await dbHelper.returnGradeProportionsByPeriodAndSubject(
+                'first_period', _selectedSubject!);
+        secondPeriodCounts =
+            await dbHelper.returnGradeProportionsByPeriodAndSubject(
+                'second_period', _selectedSubject!);
       }
-
 
       setState(() {
         // Per il grafico di andamento, combiniamo i dati dei due periodi
@@ -1440,7 +1460,8 @@ class _StatisticsPageState extends State<StatisticsPage> {
         List.generate(firstPeriodOriginal.length, (index) {
       return FlSpot(
         index.toDouble(),
-        double.parse((firstPeriodOriginal[index]['average_grade'] as double).toStringAsFixed(2)),
+        double.parse((firstPeriodOriginal[index]['average_grade'] as double)
+            .toStringAsFixed(2)),
       );
     });
 
@@ -1448,7 +1469,8 @@ class _StatisticsPageState extends State<StatisticsPage> {
         List.generate(firstPeriodRounded.length, (index) {
       return FlSpot(
         index.toDouble(),
-        double.parse((firstPeriodRounded[index]['average_grade'] as double).toStringAsFixed(2)),
+        double.parse((firstPeriodRounded[index]['average_grade'] as double)
+            .toStringAsFixed(2)),
       );
     });
 
@@ -1456,7 +1478,8 @@ class _StatisticsPageState extends State<StatisticsPage> {
         List.generate(secondPeriodOriginal.length, (index) {
       return FlSpot(
         index.toDouble(),
-        double.parse((secondPeriodOriginal[index]['average_grade'] as double).toStringAsFixed(2)),
+        double.parse((secondPeriodOriginal[index]['average_grade'] as double)
+            .toStringAsFixed(2)),
       );
     });
 
@@ -1464,10 +1487,10 @@ class _StatisticsPageState extends State<StatisticsPage> {
         List.generate(secondPeriodRounded.length, (index) {
       return FlSpot(
         index.toDouble(),
-        double.parse((secondPeriodRounded[index]['average_grade'] as double).toStringAsFixed(2)),
+        double.parse((secondPeriodRounded[index]['average_grade'] as double)
+            .toStringAsFixed(2)),
       );
     });
-
 
     // Determina i valori min/max per l'asse Y
     double minY = 0;
@@ -1708,7 +1731,6 @@ class _StatisticsPageState extends State<StatisticsPage> {
                 },
               ),
             ),
-
             gridData: FlGridData(show: true),
             titlesData: FlTitlesData(
               leftTitles: AxisTitles(
@@ -1806,7 +1828,8 @@ class _StatisticsPageState extends State<StatisticsPage> {
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 16),
-                    _buildAverageTrendChart(context), // Non ha bisogno di await qui
+                    _buildAverageTrendChart(
+                        context), // Non ha bisogno di await qui
                     const SizedBox(height: 16),
                     // Legenda per il grafico a linee
                     Column(

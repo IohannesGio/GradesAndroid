@@ -137,6 +137,107 @@ class Period {
   }
 }
 
+// MODELLO: Lesson per l'orario scolastico
+class Lesson {
+  final int? id;
+  final String subjectName;
+  final int dayOfWeek; // 1 for Monday, 7 for Sunday
+  final String startTime; // e.g., "08:00"
+  final String endTime; // e.g., "09:00"
+  final String? room; // e.g., "Aula 101"
+  final String? teacher; // e.g., "Prof. Rossi"
+
+  Lesson({
+    this.id,
+    required this.subjectName,
+    required this.dayOfWeek,
+    required this.startTime,
+    required this.endTime,
+    this.room,
+    this.teacher,
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'subject_name': subjectName,
+      'day_of_week': dayOfWeek,
+      'start_time': startTime,
+      'end_time': endTime,
+      'room': room,
+      'teacher': teacher,
+    };
+  }
+
+  factory Lesson.fromMap(Map<String, dynamic> map) {
+    return Lesson(
+      id: map['id'] as int?,
+      subjectName: map['subject_name'] as String,
+      dayOfWeek: map['day_of_week'] as int,
+      startTime: map['start_time'] as String,
+      endTime: map['end_time'] as String,
+      room: map['room'] as String?,
+      teacher: map['teacher'] as String?,
+    );
+  }
+
+  @override
+  String toString() {
+    return 'Lesson{id: $id, subjectName: $subjectName, dayOfWeek: $dayOfWeek, startTime: $startTime, endTime: $endTime, room: $room, teacher: $teacher}';
+  }
+}
+
+// NUOVO MODELLO: CalendarEvent per compiti, verifiche, ecc.
+class CalendarEvent {
+  final int? id;
+  final String title;
+  final String description;
+  final DateTime date; // Data dell'evento
+  final String type; // e.g., 'compito', 'verifica', 'appunto'
+  final String? subject; // Materia associata (opzionale)
+
+  CalendarEvent({
+    this.id,
+    required this.title,
+    this.description = '',
+    required this.date,
+    required this.type,
+    this.subject,
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'title': title,
+      'description': description,
+      'date': DateFormat('yyyyMMdd').format(date), // Salva come YYYYMMDD int
+      'type': type,
+      'subject': subject,
+    };
+  }
+
+  factory CalendarEvent.fromMap(Map<String, dynamic> map) {
+    final dateInt = map['date'] as int;
+    final year = dateInt ~/ 10000;
+    final month = (dateInt ~/ 100) % 100;
+    final day = dateInt % 100;
+    return CalendarEvent(
+      id: map['id'] as int?,
+      title: map['title'] as String,
+      description: map['description'] as String,
+      date: DateTime.utc(year, month, day), // Costruisci DateTime direttamente dagli interi
+      type: map['type'] as String,
+      subject: map['subject'] as String?,
+    );
+  }
+
+  @override
+  String toString() {
+    return 'CalendarEvent{id: $id, title: $title, date: $date, type: $type, subject: $subject}';
+  }
+}
+
+
 // --- Database Helper Class ---
 
 class DatabaseHelper {
@@ -162,9 +263,9 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 1, // Inizia con la versione 1
+      version: 1, // VERSIONE IMPOSTATA A 1
       onCreate: _onCreate,
-      // onUpgrade: _onUpgrade, // Definisci se devi gestire migrazioni future
+      // onUpgrade rimosso
     );
   }
 
@@ -201,6 +302,29 @@ class DatabaseHelper {
         end_date INTEGER   -- Memorizza come YYYYMMDD o NULL
       )
     '''); //
+    // TABELLA PER L'ORARIO SCOLASTICO
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS timetable (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        subject_name TEXT NOT NULL,
+        day_of_week INTEGER NOT NULL, -- 1=Lunedì, 2=Martedì, ..., 7=Domenica
+        start_time TEXT NOT NULL,     -- Formato "HH:MM"
+        end_time TEXT NOT NULL,       -- Formato "HH:MM"
+        room TEXT,
+        teacher TEXT
+      )
+    ''');
+    // TABELLA PER GLI EVENTI DEL CALENDARIO
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS calendar_events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        description TEXT,
+        date INTEGER NOT NULL, -- YYYYMMDD
+        type TEXT NOT NULL,    -- e.g., 'compito', 'verifica', 'appunto'
+        subject TEXT           -- Materia associata (opzionale)
+      )
+    ''');
 
     // Inserisci periodi di default (memorizza NULL invece di 'N/A')
     // Usiamo INSERT OR IGNORE come nel codice Python
@@ -211,6 +335,8 @@ class DatabaseHelper {
       ('second_period', NULL, NULL)
     '''); //
   }
+
+  // onUpgrade rimosso
 
   // --- Funzioni Convertite ---
 
@@ -407,9 +533,7 @@ class DatabaseHelper {
       // Ottieni le date del periodo specificato
       final periodData = await db.query('periods',
           where: 'name = ?',
-          whereArgs: [
-            periodName == 'first' ? 'first_period' : 'second_period'
-          ] //
+          whereArgs: [periodName] // Correzione: usa direttamente periodName
           );
 
       if (periodData.isEmpty) return gradeProportions; // Periodo non trovato
@@ -462,9 +586,7 @@ class DatabaseHelper {
       // Ottieni le date del periodo specificato
       final periodData = await db.query('periods',
           where: 'name = ?',
-          whereArgs: [
-            periodName == 'first' ? 'first_period' : 'second_period'
-          ]);
+          whereArgs: [periodName]); // Correzione: usa direttamente periodName
 
       if (periodData.isEmpty) return gradeProportions; // Periodo non trovato
 
@@ -1585,6 +1707,189 @@ class DatabaseHelper {
         countResult..update('error', (v) => v + 1),
         0
       ); // Specifica il tipo Map<String, String>
+    }
+  }
+
+  // --- Funzioni per la gestione dell'orario scolastico (DiaryPage) ---
+
+  /// Aggiunge una nuova lezione all'orario.
+  Future<bool> addLesson(Lesson lesson) async {
+    final db = await database;
+    try {
+      // Assicurati che il nome della materia sia in maiuscolo per consistenza
+      final Map<String, dynamic> lessonMap = lesson.toMap();
+      lessonMap['subject_name'] = (lessonMap['subject_name'] as String).toUpperCase();
+
+      await db.insert(
+        'timetable',
+        lessonMap..remove('id'), // Rimuovi id perché è AUTOINCREMENT
+        conflictAlgorithm: ConflictAlgorithm.replace, // Sostituisce se l'ID esiste
+      );
+      return true;
+    } catch (e) {
+      print('Errore in addLesson: $e');
+      return false;
+    }
+  }
+
+  /// Recupera tutte le lezioni per un giorno della settimana specifico.
+  /// `dayOfWeek`: 1=Lunedì, 2=Martedì, ..., 7=Domenica.
+  Future<List<Lesson>> getLessonsForDay(int dayOfWeek) async {
+    final db = await database;
+    try {
+      final List<Map<String, dynamic>> maps = await db.query(
+        'timetable',
+        where: 'day_of_week = ?',
+        whereArgs: [dayOfWeek],
+        orderBy: 'start_time ASC', // Ordina per orario di inizio
+      );
+      return List.generate(maps.length, (i) => Lesson.fromMap(maps[i]));
+    } catch (e) {
+      print('Errore in getLessonsForDay: $e');
+      return [];
+    }
+  }
+
+  /// Recupera tutte le lezioni dell'orario.
+  Future<List<Lesson>> getAllLessons() async {
+    final db = await database;
+    try {
+      final List<Map<String, dynamic>> maps = await db.query(
+        'timetable',
+        orderBy: 'day_of_week ASC, start_time ASC', // Ordina per giorno e orario
+      );
+      return List.generate(maps.length, (i) => Lesson.fromMap(maps[i]));
+    } catch (e) {
+      print('Errore in getAllLessons: $e');
+      return [];
+    }
+  }
+
+  /// Aggiorna una lezione esistente.
+  Future<bool> updateLesson(Lesson lesson) async {
+    final db = await database;
+    try {
+      if (lesson.id == null) {
+        print('Errore: ID della lezione non fornito per l\'aggiornamento.');
+        return false;
+      }
+      final Map<String, dynamic> lessonMap = lesson.toMap();
+      lessonMap['subject_name'] = (lessonMap['subject_name'] as String).toUpperCase(); // Assicurati sia maiuscolo
+
+      final count = await db.update(
+        'timetable',
+        lessonMap,
+        where: 'id = ?',
+        whereArgs: [lesson.id],
+      );
+      return count > 0;
+    } catch (e) {
+      print('Errore in updateLesson: $e');
+      return false;
+    }
+  }
+
+  /// Elimina una lezione dato il suo ID.
+  Future<bool> deleteLesson(int id) async {
+    final db = await database;
+    try {
+      final count = await db.delete(
+        'timetable',
+        where: 'id = ?',
+        whereArgs: [id],
+      );
+      return count > 0;
+    } catch (e) {
+      print('Errore in deleteLesson: $e');
+      return false;
+    }
+  }
+
+  // --- Funzioni per la gestione degli eventi del calendario ---
+
+  /// Aggiunge un nuovo evento al calendario.
+  Future<bool> addCalendarEvent(CalendarEvent event) async {
+    final db = await database;
+    try {
+      await db.insert(
+        'calendar_events',
+        event.toMap()..remove('id'),
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+      return true;
+    } catch (e) {
+      print('Errore in addCalendarEvent: $e');
+      return false;
+    }
+  }
+
+  /// Recupera tutti gli eventi per una data specifica.
+  Future<List<CalendarEvent>> getCalendarEventsForDate(DateTime date) async {
+    final db = await database;
+    final dateInt = int.parse(DateFormat('yyyyMMdd').format(date));
+    try {
+      final List<Map<String, dynamic>> maps = await db.query(
+        'calendar_events',
+        where: 'date = ?',
+        whereArgs: [dateInt],
+        orderBy: 'title ASC', // O un altro criterio di ordinamento
+      );
+      return List.generate(maps.length, (i) => CalendarEvent.fromMap(maps[i]));
+    } catch (e) {
+      print('Errore in getCalendarEventsForDate: $e');
+      return [];
+    }
+  }
+
+  /// Recupera tutti gli eventi del calendario.
+  Future<List<CalendarEvent>> getAllCalendarEvents() async {
+    final db = await database;
+    try {
+      final List<Map<String, dynamic>> maps = await db.query(
+        'calendar_events',
+        orderBy: 'date ASC, title ASC',
+      );
+      return List.generate(maps.length, (i) => CalendarEvent.fromMap(maps[i]));
+    } catch (e) {
+      print('Errore in getAllCalendarEvents: $e');
+      return [];
+    }
+  }
+
+  /// Aggiorna un evento del calendario esistente.
+  Future<bool> updateCalendarEvent(CalendarEvent event) async {
+    final db = await database;
+    try {
+      if (event.id == null) {
+        print('Errore: ID dell\'evento non fornito per l\'aggiornamento.');
+        return false;
+      }
+      final count = await db.update(
+        'calendar_events',
+        event.toMap(),
+        where: 'id = ?',
+        whereArgs: [event.id],
+      );
+      return count > 0;
+    } catch (e) {
+      print('Errore in updateCalendarEvent: $e');
+      return false;
+    }
+  }
+
+  /// Elimina un evento del calendario dato il suo ID.
+  Future<bool> deleteCalendarEvent(int id) async {
+    final db = await database;
+    try {
+      final count = await db.delete(
+        'calendar_events',
+        where: 'id = ?',
+        whereArgs: [id],
+      );
+      return count > 0;
+    } catch (e) {
+      print('Errore in deleteCalendarEvent: $e');
+      return false;
     }
   }
 
