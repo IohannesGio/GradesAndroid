@@ -14,11 +14,12 @@ Grades è un'app Flutter per la gestione dei voti scolastici: puoi registrare ma
 
 🎨 Interfaccia moderna basata su Material 3
 
+📒 Tieni traccia dei tuoi compiti e inserisci il tuo orario settimanale
+
 ## ✨ Funzionalità future
 
 - Supporto salvataggio su cloud
 
-- Miglioramenti grafici e animazioni sui grafici
 
 ## 🙌 Contributi
 Contributi, feedback e miglioramenti sono benvenuti!
