@@ -6,6 +6,7 @@ import 'package:sqflite/sqflite.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:file_selector/file_selector.dart';
 
 // ---------- CLASSI ----------
 
@@ -322,6 +323,45 @@ class DatabaseHelper {
   Future<String> getDatabasePath() async {
     var databasesPath = await getApplicationDocumentsDirectory();
     return join(databasesPath.path, 'grades.sqlite3');
+  }
+
+  Future<String> exportDatabase() async {
+    try {
+      final String dbPath = await getDatabasePath();
+      final File dbFile = File(dbPath);
+
+      if (!await dbFile.exists()) {
+        return "Errore: il file del database non è stato trovato.";
+      }
+
+      final String exportFileName = 'grades.sqlite3';
+
+      if (Platform.isLinux || Platform.isWindows || Platform.isMacOS) {
+        final FileSaveLocation? saveLocation = await getSaveLocation(
+          suggestedName: exportFileName,
+        );
+        final String? path = saveLocation?.path;
+        if (path == null) {
+          return "Operazione annullata.";
+        }
+        await dbFile.copy(path);
+        return "Backup esportato in:\n$path";
+      } else {
+        final XFile fileToShare = XFile(dbPath, name: exportFileName);
+        final result = await Share.shareXFiles(
+          [fileToShare],
+          text: 'Backup del database',
+        );
+        if (result.status == ShareResultStatus.success) {
+          return "Operazione completata!";
+        } else {
+          return "Operazione annullata.";
+        }
+      }
+    } catch (e) {
+      print("Errore durante l'esportazione del database: $e");
+      return "Si è verificato un errore durante l'esportazione.";
+    }
   }
 
   Future<List<(String, String)>> listSubjects() async {
@@ -1684,36 +1724,5 @@ class DatabaseHelper {
     await db.close();
     _database = null;
     print("Database chiuso.");
-  }
-
-  Future<String> exportDatabase() async {
-    try {
-      final String dbPath = await getDatabasePath();
-      final File dbFile = File(dbPath);
-
-      if (!await dbFile.exists()) {
-        return "Errore: il file del database non è stato trovato.";
-      }
-
-      final String timestamp =
-          DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
-      final String exportFileName = 'grades_backup_$timestamp.sqlite3';
-
-      final XFile fileToShare = XFile(dbPath, name: exportFileName);
-
-      final result = await Share.shareXFiles(
-        [fileToShare],
-        text: 'Backup del database',
-      );
-
-      if (result.status == ShareResultStatus.success) {
-        return "Operazione completata!";
-      } else {
-        return "Operazione annullata.";
-      }
-    } catch (e) {
-      print("Errore durante la condivisione del database: $e");
-      return "Si è verificato un errore durante l'esportazione.";
-    }
   }
 }
