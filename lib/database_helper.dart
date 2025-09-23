@@ -364,6 +364,28 @@ class DatabaseHelper {
     }
   }
 
+  Future<String> importDatabase(String sourcePath) async {
+    try {
+      final String dbPath = await getDatabasePath();
+      final File sourceFile = File(sourcePath);
+
+      if (!await sourceFile.exists()) {
+        return "Errore: file non trovato.";
+      }
+
+      if (_database != null) {
+        await _database!.close();
+        _database = null;
+      }
+
+      await sourceFile.copy(dbPath);
+      return "Database importato con successo!";
+    } catch (e) {
+      print("Errore durante l'importazione del database: $e");
+      return "Si è verificato un errore durante l'importazione.";
+    }
+  }
+
   Future<List<(String, String)>> listSubjects() async {
     final db = await database;
     try {
@@ -819,8 +841,11 @@ class DatabaseHelper {
         final date = record['date'] as int;
         final subjectName = record['subject_name'] as String?;
         final average = record['average_grade'] as double?;
+
         if (average == null || average.isNaN || average.isInfinite) continue;
+
         subjectAveragesByDate.putIfAbsent(date, () => {});
+
         if (recordType == 'Subject Average' && subjectName != null) {
           subjectAveragesByDate[date]![subjectName] = average;
         } else if (recordType == 'General Average') {
@@ -833,17 +858,20 @@ class DatabaseHelper {
 
       for (int date in sortedDates) {
         currentSubjectAveragesState.addAll(subjectAveragesByDate[date]!);
+
         if (currentSubjectAveragesState.isNotEmpty) {
           double roundedGeneralAvg = currentSubjectAveragesState.values
                   .map((avg) => roundCustom(avg).toDouble())
                   .reduce((a, b) => a + b) /
               currentSubjectAveragesState.length;
+
           if (originalGeneralAveragesFromQuery.containsKey(date)) {
             finalRoundedAverages
                 .add({'date': date, 'average_grade': roundedGeneralAvg});
           }
         }
       }
+
       originalGeneralAveragesFromQuery.forEach((date, avg) {
         finalOriginalAverages.add({'date': date, 'average_grade': avg});
       });
@@ -1724,5 +1752,27 @@ class DatabaseHelper {
     await db.close();
     _database = null;
     print("Database chiuso.");
+  }
+
+  Future<bool> clearAllData() async {
+    final db = await database;
+    try {
+      await db.transaction((txn) async {
+        await txn.delete('grades');
+        await txn.delete('subject_list');
+        await txn.delete('periods');
+        // Reinserisci i periodi vuoti
+        await txn.execute('''
+        INSERT INTO periods (name, start_date, end_date)
+        VALUES 
+        ('first_period', NULL, NULL),
+        ('second_period', NULL, NULL)
+      ''');
+      });
+      return true;
+    } catch (e) {
+      print('Errore in clearAllData: $e');
+      return false;
+    }
   }
 }
