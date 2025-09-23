@@ -1,30 +1,30 @@
 import 'dart:async';
-import 'dart:io'; // Per Directory
+import 'dart:io';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:intl/intl.dart'; // Per formattare DateTime se necessario
+import 'package:intl/intl.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:file_selector/file_selector.dart';
 
-// --- Model Classes (Rappresentano le tabelle del DB) ---
+// ---------- CLASSI ----------
 
 class Subject {
   final int? id;
   final String subjectName;
-  final double? objective; // REAL in SQLite corrisponde a double in Dart
+  final double? objective;
 
   Subject({this.id, required this.subjectName, this.objective});
 
   Map<String, dynamic> toMap() {
     return {
       'id': id,
-      'subject': subjectName
-          .toUpperCase(), // Assicura maiuscolo come nel codice Python
+      'subject': subjectName.toUpperCase(),
       'objective': objective,
     };
   }
 
-  // Metodo factory per creare un Subject da una Map (risultato query)
   factory Subject.fromMap(Map<String, dynamic> map) {
     return Subject(
       id: map['id'] as int?,
@@ -42,10 +42,10 @@ class Subject {
 class Grade {
   final int? id;
   final String subjectName;
-  final double grade; // REAL
-  final int date; // INTEGER YYYYMMDD come nel codice Python
-  final double weight; // REAL
-  final String type; // TEXT
+  final double grade;
+  final int date;
+  final double weight;
+  final String type;
 
   Grade({
     this.id,
@@ -78,7 +78,6 @@ class Grade {
     );
   }
 
-  // Helper per ottenere DateTime (opzionale, se vuoi lavorarci)
   DateTime get dateTime {
     final dateStr = date.toString();
     if (dateStr.length == 8) {
@@ -86,11 +85,10 @@ class Grade {
         return DateTime.parse(
             '${dateStr.substring(0, 4)}-${dateStr.substring(4, 6)}-${dateStr.substring(6, 8)}');
       } catch (e) {
-        // Gestisci errore di parsing se il formato non è valido
-        return DateTime(1970); // O un valore di default
+        return DateTime(1970);
       }
     }
-    return DateTime(1970); // Valore di default se formato non valido
+    return DateTime(1970);
   }
 
   @override
@@ -100,23 +98,21 @@ class Grade {
 }
 
 class Period {
-  final String name; // PRIMARY KEY
-  final int? startDate; // INTEGER YYYYMMDD o null se 'N/A'
-  final int? endDate; // INTEGER YYYYMMDD o null se 'N/A'
+  final String name;
+  final int? startDate;
+  final int? endDate;
 
   Period({required this.name, this.startDate, this.endDate});
 
   Map<String, dynamic> toMap() {
     return {
       'name': name,
-      // Salva 'N/A' se null, altrimenti il valore int
       'start_date': startDate ?? 'N/A',
       'end_date': endDate ?? 'N/A',
     };
   }
 
   factory Period.fromMap(Map<String, dynamic> map) {
-    // Converte 'N/A' in null, altrimenti fa il parsing dell'intero
     int? parseDate(dynamic value) {
       if (value is int) return value;
       if (value is String && value != 'N/A') {
@@ -137,15 +133,14 @@ class Period {
   }
 }
 
-// MODELLO: Lesson per l'orario scolastico
 class Lesson {
   final int? id;
   final String subjectName;
-  final int dayOfWeek; // 1 for Monday, 7 for Sunday
-  final String startTime; // e.g., "08:00"
-  final String endTime; // e.g., "09:00"
-  final String? room; // e.g., "Aula 101"
-  final String? teacher; // e.g., "Prof. Rossi"
+  final int dayOfWeek;
+  final String startTime;
+  final String endTime;
+  final String? room;
+  final String? teacher;
 
   Lesson({
     this.id,
@@ -187,14 +182,13 @@ class Lesson {
   }
 }
 
-// NUOVO MODELLO: CalendarEvent per compiti, verifiche, ecc.
 class CalendarEvent {
   final int? id;
   final String title;
   final String description;
-  final DateTime date; // Data dell'evento
-  final String type; // e.g., 'compito', 'verifica', 'appunto'
-  final String? subject; // Materia associata (opzionale)
+  final DateTime date;
+  final String type;
+  final String? subject;
 
   CalendarEvent({
     this.id,
@@ -210,7 +204,7 @@ class CalendarEvent {
       'id': id,
       'title': title,
       'description': description,
-      'date': DateFormat('yyyyMMdd').format(date), // Salva come YYYYMMDD int
+      'date': DateFormat('yyyyMMdd').format(date),
       'type': type,
       'subject': subject,
     };
@@ -225,7 +219,7 @@ class CalendarEvent {
       id: map['id'] as int?,
       title: map['title'] as String,
       description: map['description'] as String,
-      date: DateTime.utc(year, month, day), // Costruisci DateTime direttamente dagli interi
+      date: DateTime.utc(year, month, day),
       type: map['type'] as String,
       subject: map['subject'] as String?,
     );
@@ -237,11 +231,9 @@ class CalendarEvent {
   }
 }
 
-
-// --- Database Helper Class ---
+// ---------- DATABASE HELPER ----------
 
 class DatabaseHelper {
-  // Singleton pattern
   static final DatabaseHelper _instance = DatabaseHelper._internal();
   factory DatabaseHelper() => _instance;
   DatabaseHelper._internal();
@@ -249,36 +241,31 @@ class DatabaseHelper {
   static Database? _database;
   static const String _dbName = "grades.sqlite3"; // Nome file DB
 
-  // Getter per il database (lazy initialization)
   Future<Database> get database async {
     if (_database != null) return _database!;
     _database = await _initDatabase();
     return _database!;
   }
 
-  // Inizializzazione del database
   Future<Database> _initDatabase() async {
     Directory documentsDirectory = await getApplicationDocumentsDirectory();
     String path = join(documentsDirectory.path, _dbName);
 
     return await openDatabase(
       path,
-      version: 1, // VERSIONE IMPOSTATA A 1
+      version: 1,
       onCreate: _onCreate,
-      // onUpgrade rimosso
     );
   }
 
-  // Creazione delle tabelle alla prima apertura del DB
   Future<void> _onCreate(Database db, int version) async {
-    // NOTA: Usiamo INTEGER per le date YYYYMMDD come nel codice Python
     await db.execute('''
       CREATE TABLE IF NOT EXISTS subject_list (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         subject TEXT UNIQUE,
         objective REAL
       )
-    '''); //
+    ''');
     await db.execute('''
       CREATE TABLE IF NOT EXISTS grades (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -288,176 +275,171 @@ class DatabaseHelper {
         weight REAL,
         type TEXT
       )
-    '''); //
+    ''');
     await db.execute('''
       CREATE TABLE IF NOT EXISTS settings (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         primary_colour TEXT
       )
-    '''); //
+    ''');
     await db.execute('''
       CREATE TABLE IF NOT EXISTS periods (
         name TEXT PRIMARY KEY,
-        start_date INTEGER, -- Memorizza come YYYYMMDD o NULL
-        end_date INTEGER   -- Memorizza come YYYYMMDD o NULL
+        start_date INTEGER,
+        end_date INTEGER
       )
-    '''); //
-    // TABELLA PER L'ORARIO SCOLASTICO
+    ''');
     await db.execute('''
       CREATE TABLE IF NOT EXISTS timetable (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         subject_name TEXT NOT NULL,
-        day_of_week INTEGER NOT NULL, -- 1=Lunedì, 2=Martedì, ..., 7=Domenica
-        start_time TEXT NOT NULL,     -- Formato "HH:MM"
-        end_time TEXT NOT NULL,       -- Formato "HH:MM"
+        day_of_week INTEGER NOT NULL,
+        start_time TEXT NOT NULL,
+        end_time TEXT NOT NULL,
         room TEXT,
         teacher TEXT
       )
     ''');
-    // TABELLA PER GLI EVENTI DEL CALENDARIO
     await db.execute('''
       CREATE TABLE IF NOT EXISTS calendar_events (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         title TEXT NOT NULL,
         description TEXT,
-        date INTEGER NOT NULL, -- YYYYMMDD
-        type TEXT NOT NULL,    -- e.g., 'compito', 'verifica', 'appunto'
-        subject TEXT           -- Materia associata (opzionale)
+        date INTEGER NOT NULL,
+        type TEXT NOT NULL,
+        subject TEXT
       )
     ''');
-
-    // Inserisci periodi di default (memorizza NULL invece di 'N/A')
-    // Usiamo INSERT OR IGNORE come nel codice Python
     await db.execute('''
       INSERT OR IGNORE INTO periods (name, start_date, end_date)
       VALUES
       ('first_period', NULL, NULL),
       ('second_period', NULL, NULL)
-    '''); //
+    ''');
   }
 
-  // onUpgrade rimosso
+  // ---------- GET FUNCTIONS ----------
 
-  // --- Funzioni Convertite ---
-
-  /// Arrotonda un numero all'intero successivo se la parte decimale è >= 0.5
-  int roundCustom(double n) {
-    return (n + 0.5)
-        .floor(); // .floor() è equivalente a int() in Python per questo scopo
+  Future<String> getDatabasePath() async {
+    var databasesPath = await getApplicationDocumentsDirectory();
+    return join(databasesPath.path, 'grades.sqlite3');
   }
 
-  /// Aggiunge una materia. Ritorna true se successo, lancia eccezione altrimenti.
-  /// Lancia 'duplicate subject' in caso di violazione UNIQUE.
-  Future<bool> addSubject(String subject) async {
-    final db = await database;
+  Future<String> exportDatabase() async {
     try {
-      await db.insert(
-        'subject_list',
-        {'subject': subject.toUpperCase()}, // Assicura maiuscolo
-        conflictAlgorithm:
-            ConflictAlgorithm.fail, // Lancia eccezione se duplicato
-      );
-      return true;
-    } on DatabaseException catch (e) {
-      if (e.isUniqueConstraintError()) {
-        // Potresti voler lanciare un'eccezione personalizzata o ritornare un codice/stringa
-        throw 'duplicate subject'; // Simile al comportamento Python
+      final String dbPath = await getDatabasePath();
+      final File dbFile = File(dbPath);
+
+      if (!await dbFile.exists()) {
+        return "Errore: il file del database non è stato trovato.";
+      }
+
+      final String exportFileName = 'grades.sqlite3';
+
+      if (Platform.isLinux || Platform.isWindows || Platform.isMacOS) {
+        final FileSaveLocation? saveLocation = await getSaveLocation(
+          suggestedName: exportFileName,
+        );
+        final String? path = saveLocation?.path;
+        if (path == null) {
+          return "Operazione annullata.";
+        }
+        await dbFile.copy(path);
+        return "Backup esportato in:\n$path";
       } else {
-        print('Errore Database in addSubject: $e');
-        rethrow; // Rilancia altre eccezioni DB
+        final XFile fileToShare = XFile(dbPath, name: exportFileName);
+        final result = await Share.shareXFiles(
+          [fileToShare],
+          text: 'Backup del database',
+        );
+        if (result.status == ShareResultStatus.success) {
+          return "Operazione completata!";
+        } else {
+          return "Operazione annullata.";
+        }
       }
     } catch (e) {
-      print('Errore generico in addSubject: $e');
-      return false;
+      print("Errore durante l'esportazione del database: $e");
+      return "Si è verificato un errore durante l'esportazione.";
     }
   }
 
-  /// Ritorna la lista di tutte le materie con i loro obiettivi.
-  /// Ritorna una lista di tuple (SubjectName, ObjectiveString)
+  Future<String> importDatabase(String sourcePath) async {
+    try {
+      final String dbPath = await getDatabasePath();
+      final File sourceFile = File(sourcePath);
+
+      if (!await sourceFile.exists()) {
+        return "Errore: file non trovato.";
+      }
+
+      if (_database != null) {
+        await _database!.close();
+        _database = null;
+      }
+
+      await sourceFile.copy(dbPath);
+      return "Database importato con successo!";
+    } catch (e) {
+      print("Errore durante l'importazione del database: $e");
+      return "Si è verificato un errore durante l'importazione.";
+    }
+  }
+
   Future<List<(String, String)>> listSubjects() async {
     final db = await database;
     try {
-      final List<Map<String, dynamic>> maps = await db.query('subject_list'); //
+      final List<Map<String, dynamic>> maps = await db.query('subject_list');
       List<(String, String)> result = [];
       for (var map in maps) {
         final subject = Subject.fromMap(map);
-        result.add(
-            (subject.subjectName, subject.objective?.toString() ?? 'N/A')); //
+        result
+            .add((subject.subjectName, subject.objective?.toString() ?? 'N/A'));
       }
       return result;
     } catch (e) {
       print('Errore in listSubjects: $e');
-      return []; // Ritorna lista vuota in caso di errore
+      return [];
     }
   }
 
-  /// Ritorna l'obiettivo (come stringa) per una data materia.
   Future<String> returnObjective(String subject) async {
     final db = await database;
     try {
       final List<Map<String, dynamic>> maps = await db.query(
         'subject_list',
         columns: ['objective'],
-        where: 'subject = ?', // Usa '?' per sicurezza
-        whereArgs: [subject.toUpperCase()], // Usa parametri
-      ); //
+        where: 'subject = ?',
+        whereArgs: [subject.toUpperCase()],
+      );
       if (maps.isNotEmpty) {
         final objective = maps.first['objective'];
-        return objective?.toString() ?? 'N/A'; // Se null, ritorna 'N/A'
+        return objective?.toString() ?? 'N/A';
       } else {
-        return 'N/A'; // Materia non trovata
+        return 'N/A';
       }
     } catch (e) {
       print('Errore in returnObjective: $e');
-      return 'N/A'; //
+      return 'N/A';
     }
   }
 
-  /// Ritorna l'obiettivo medio (come stringa) di tutte le materie.
   Future<String> returnAverageObjective() async {
     final db = await database;
     try {
-      // Usiamo rawQuery perché AVG() è una funzione aggregata
       final result = await db
-          .rawQuery('SELECT ROUND(AVG(objective), 2) FROM subject_list'); //
+          .rawQuery('SELECT ROUND(AVG(objective), 2) FROM subject_list');
       if (result.isNotEmpty && result.first.values.first != null) {
         return result.first.values.first.toString();
       } else {
-        return 'N/A'; // Nessun obiettivo impostato o nessuna materia
+        return 'N/A';
       }
     } catch (e) {
       print('Errore in returnAverageObjective: $e');
-      return 'N/A'; //
+      return 'N/A';
     }
   }
 
-  /// Aggiunge un voto. Ritorna true se successo, false altrimenti.
-  /// `date` deve essere un intero nel formato YYYYMMDD.
-  Future<bool> addGrade(String subjectName, double grade, int date,
-      double weight, String type) async {
-    final db = await database;
-    try {
-      final gradeObj = Grade(
-          subjectName: subjectName.toUpperCase(), // Assicura consistenza
-          grade: grade,
-          date: date,
-          weight: weight,
-          type: type);
-      await db.insert(
-        'grades',
-        gradeObj.toMap()..remove('id'), // Rimuovi id perché è AUTOINCREMENT
-        conflictAlgorithm:
-            ConflictAlgorithm.ignore, // O scegli un altro algoritmo
-      ); //
-      return true;
-    } catch (e) {
-      print('Errore in addGrade: $e');
-      return false; //
-    }
-  }
-
-  /// Ritorna la lista di tutti i voti (come oggetti Grade) per una data materia.
-  /// Ordina per data come sembra implicito nel codice Python originale.
   Future<List<Grade>> listGrades(String subject) async {
     final db = await database;
     try {
@@ -465,16 +447,15 @@ class DatabaseHelper {
         'grades',
         where: 'subject_name = ?',
         whereArgs: [subject.toUpperCase()],
-        orderBy: 'date ASC', // Ordina per data
-      ); //
+        orderBy: 'date ASC',
+      );
       return List.generate(maps.length, (i) => Grade.fromMap(maps[i]));
     } catch (e) {
       print('Errore in listGrades: $e');
-      return []; // Ritorna lista vuota in caso di errore
+      return [];
     }
   }
 
-  /// Ritorna la lista dei voti (oggetti Grade) per materia in un range di date (YYYYMMDD).
   Future<List<Grade>> listGradesByPeriod(String subject,
       {int? startDate, int? endDate}) async {
     final db = await database;
@@ -484,10 +465,10 @@ class DatabaseHelper {
     final subjectUpper = subject.toUpperCase();
 
     if (startDate != null && endDate != null) {
-      whereClause = 'subject_name = ? AND date BETWEEN ? AND ?'; //
+      whereClause = 'subject_name = ? AND date BETWEEN ? AND ?';
       whereArgs = [subjectUpper, startDate, endDate];
     } else {
-      whereClause = 'subject_name = ?'; //
+      whereClause = 'subject_name = ?';
       whereArgs = [subjectUpper];
     }
 
@@ -501,27 +482,24 @@ class DatabaseHelper {
       return List.generate(maps.length, (i) => Grade.fromMap(maps[i]));
     } catch (e) {
       print('Errore in listGradesByPeriod: $e');
-      return []; //
+      return [];
     }
   }
 
-  /// Ritorna una lista di tutti i valori dei voti (solo i numeri).
   Future<List<double>> listAllGrades() async {
     final db = await database;
     try {
       final List<Map<String, dynamic>> result =
-          await db.query('grades', columns: ['grade']); //
+          await db.query('grades', columns: ['grade']);
       return result.map((map) => map['grade'] as double).toList();
     } catch (e) {
       print('Errore in listAllGrades: $e');
-      return []; //
+      return [];
     }
   }
 
-  /// Ritorna una mappa con la proporzione dei voti (solo la parte intera) per periodo.
   Future<Map<int, int>> returnGradeProportionsByPeriod(
       String periodName) async {
-    // periodName dovrebbe essere 'first_period' o 'second_period'
     final db = await database;
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     int? maxGradeFromPrefs = prefs.getDouble("max_grade")?.toInt();
@@ -530,13 +508,10 @@ class DatabaseHelper {
     Map<int, int> gradeProportions = {for (var i = 0; i <= maxGrade; i++) i: 0};
 
     try {
-      // Ottieni le date del periodo specificato
-      final periodData = await db.query('periods',
-          where: 'name = ?',
-          whereArgs: [periodName] // Correzione: usa direttamente periodName
-          );
+      final periodData =
+          await db.query('periods', where: 'name = ?', whereArgs: [periodName]);
 
-      if (periodData.isEmpty) return gradeProportions; // Periodo non trovato
+      if (periodData.isEmpty) return gradeProportions;
 
       final period = Period.fromMap(periodData.first);
       final startDate = period.startDate;
@@ -544,34 +519,30 @@ class DatabaseHelper {
 
       if (startDate == null || endDate == null) {
         print('Date per il periodo $periodName non impostate.');
-        return gradeProportions; // Date non valide ('N/A' nel DB Python)
+        return gradeProportions;
       }
 
-      // Ottieni i voti nel range di date
       final List<Map<String, dynamic>> gradesMaps = await db.query(
         'grades',
         columns: ['grade'],
-        where: 'date BETWEEN ? AND ?', //
+        where: 'date BETWEEN ? AND ?',
         whereArgs: [startDate, endDate],
-      ); //
+      );
 
-      // Conta le proporzioni
       for (var map in gradesMaps) {
         final gradeValue = map['grade'] as double;
-        final gradeIntPart = gradeValue.floor(); // Prende solo la parte intera
+        final gradeIntPart = gradeValue.floor();
         if (gradeProportions.containsKey(gradeIntPart)) {
-          gradeProportions[gradeIntPart] =
-              gradeProportions[gradeIntPart]! + 1; //
+          gradeProportions[gradeIntPart] = gradeProportions[gradeIntPart]! + 1;
         }
       }
       return gradeProportions;
     } catch (e) {
       print('Errore in returnGradeProportionsByPeriod: $e');
-      return gradeProportions; // Ritorna la mappa (possibilmente vuota o parziale)
+      return gradeProportions;
     }
   }
 
-  /// Ritorna una mappa con la proporzione dei voti (solo la parte intera) per periodo e materia.
   Future<Map<int, int>> returnGradeProportionsByPeriodAndSubject(
       String periodName, String subjectName) async {
     final db = await database;
@@ -583,12 +554,10 @@ class DatabaseHelper {
     final subjectUpper = subjectName.toUpperCase();
 
     try {
-      // Ottieni le date del periodo specificato
-      final periodData = await db.query('periods',
-          where: 'name = ?',
-          whereArgs: [periodName]); // Correzione: usa direttamente periodName
+      final periodData =
+          await db.query('periods', where: 'name = ?', whereArgs: [periodName]);
 
-      if (periodData.isEmpty) return gradeProportions; // Periodo non trovato
+      if (periodData.isEmpty) return gradeProportions;
 
       final period = Period.fromMap(periodData.first);
       final startDate = period.startDate;
@@ -596,60 +565,45 @@ class DatabaseHelper {
 
       if (startDate == null || endDate == null) {
         print('Date per il periodo $periodName non impostate.');
-        return gradeProportions; // Date non valide ('N/A' nel DB Python)
+        return gradeProportions;
       }
 
-      // Ottieni i voti nel range di date E per la materia specifica
       final List<Map<String, dynamic>> gradesMaps = await db.query(
         'grades',
         columns: ['grade'],
-        where: 'date BETWEEN ? AND ? AND subject_name = ?', // Aggiunto filtro materia
+        where: 'date BETWEEN ? AND ? AND subject_name = ?',
         whereArgs: [startDate, endDate, subjectUpper],
       );
 
-      // Conta le proporzioni
       for (var map in gradesMaps) {
         final gradeValue = map['grade'] as double;
-        final gradeIntPart = gradeValue.floor(); // Prende solo la parte intera
+        final gradeIntPart = gradeValue.floor();
         if (gradeProportions.containsKey(gradeIntPart)) {
-          gradeProportions[gradeIntPart] =
-              gradeProportions[gradeIntPart]! + 1;
+          gradeProportions[gradeIntPart] = gradeProportions[gradeIntPart]! + 1;
         }
       }
       return gradeProportions;
     } catch (e) {
       print(
           'Errore in returnGradeProportionsByPeriodAndSubject (Materia: $subjectName, Periodo: $periodName): $e');
-      return gradeProportions; // Ritorna la mappa (possibilmente vuota o parziale)
+      return gradeProportions;
     }
   }
 
-  // --- Funzioni per le Medie Complessive (return_average_by_date, etc.) ---
-  // Queste funzioni usano query SQL complesse (CTE).
-  // La traduzione diretta è possibile con rawQuery, ma la logica di arrotondamento
-  // e combinazione dei risultati in Dart diventa complessa e potrebbe essere
-  // meglio gestirla diversamente in un'app Flutter (es. calcoli post-query).
-  // Fornisco una traduzione più semplice o un placeholder, data la complessità.
-
-  /// Ritorna le medie cumulative per data, separate per media originale e media arrotondata.
-  /// Simula il comportamento di `return_average_by_date` in Python.
-  /// `period` può essere 'first' o 'second'.
   Future<(List<Map<String, dynamic>>, List<Map<String, dynamic>>)>
       returnAverageByDate(String period) async {
     final db = await database;
 
     int? startDate;
     int? endDate;
-    String targetPeriodName = 'N/A'; // Per logging
+    String targetPeriodName = 'N/A';
 
     try {
-      // Recupera le date dei periodi
       final periodsData = await db.query('periods', orderBy: 'name');
       if (periodsData.length < 2) {
         print("Errore: Dati dei periodi mancanti o incompleti.");
         return (<Map<String, dynamic>>[], <Map<String, dynamic>>[]);
       }
-      // Assumi che la classe Period sia definita correttamente altrove
       final firstPeriod = Period.fromMap(periodsData[0]);
       final secondPeriod = Period.fromMap(periodsData[1]);
 
@@ -676,15 +630,13 @@ class DatabaseHelper {
       return (<Map<String, dynamic>>[], <Map<String, dynamic>>[]);
     }
 
-    // Query SQL con CTE (Common Table Expressions)
-    // Nota: Questa query è complessa e replica la logica Python.
     final String sqlCommand = """
-    WITH relevant_grades AS ( -- Filtra voti rilevanti per il periodo e peso
+    WITH relevant_grades AS (
         SELECT date, grade, weight, subject_name
         FROM grades
         WHERE date BETWEEN $startDate AND $endDate AND weight > 0
     ),
-    cumulative_grades AS ( -- Calcola somme cumulative per materia/data
+    cumulative_grades AS (
         SELECT
             r1.date,
             r1.subject_name,
@@ -694,59 +646,51 @@ class DatabaseHelper {
             (SELECT SUM(r2.weight) FROM relevant_grades r2 WHERE r2.subject_name = r1.subject_name AND r2.date <= r1.date) as cumulative_weight
         FROM relevant_grades r1
     ),
-    cumulative_averages AS ( -- Calcola media cumulativa per materia/data
+    cumulative_averages AS (
         SELECT
             date,
             subject_name,
             cumulative_weighted_sum * 1.0 / cumulative_weight AS average_grade
         FROM cumulative_grades
-        WHERE cumulative_weight > 0 -- Evita divisione per zero
-        GROUP BY date, subject_name -- Ottieni l'ultima media per quella data/materia
+        WHERE cumulative_weight > 0
+        GROUP BY date, subject_name
     ),
-    distinct_average_dates AS ( -- Trova le date uniche in cui le medie cambiano
+    distinct_average_dates AS (
         SELECT DISTINCT date FROM cumulative_averages
     ),
-    general_cumulative_average AS ( -- Calcola la media generale *solo* in quelle date specifiche
+    general_cumulative_average AS (
         SELECT
             dad.date,
-            AVG(ca.average_grade) AS general_average -- Media delle medie delle materie
+            AVG(ca.average_grade) AS general_average
         FROM distinct_average_dates dad
-        -- Join per ottenere l'ultima media di ogni materia fino a quella data
         JOIN cumulative_averages ca ON ca.date = (SELECT MAX(ca_inner.date)
                                                    FROM cumulative_averages ca_inner
                                                    WHERE ca_inner.subject_name = ca.subject_name AND ca_inner.date <= dad.date)
         GROUP BY dad.date
     )
-    -- Unisce i risultati delle medie per materia e delle medie generali
     SELECT 'Subject Average' AS type, date, subject_name, average_grade
     FROM cumulative_averages
     UNION ALL
     SELECT 'General Average' AS type, date, NULL AS subject_name, general_average
     FROM general_cumulative_average
-    ORDER BY date, type DESC; -- Ordina per data, poi per tipo (General prima di Subject)
-    """; //
+    ORDER BY date, type DESC;
+    """;
 
     try {
       final List<Map<String, dynamic>> data = await db.rawQuery(sqlCommand);
 
-      // Elaborazione dati in Dart per separare medie originali e calcolare le arrotondate
-      Map<int, Map<String, double>> subjectAveragesByDate =
-          {}; // { date: { subject: avg } }
-      Map<int, double> originalGeneralAveragesFromQuery = {}; // { date: avg }
-      List<Map<String, dynamic>> finalOriginalAverages =
-          []; // Lista per medie generali originali
-      List<Map<String, dynamic>> finalRoundedAverages =
-          []; // Lista per medie generali arrotondate
+      Map<int, Map<String, double>> subjectAveragesByDate = {};
+      Map<int, double> originalGeneralAveragesFromQuery = {};
+      List<Map<String, dynamic>> finalOriginalAverages = [];
+      List<Map<String, dynamic>> finalRoundedAverages = [];
 
-      // 1. Estrai dati dalla query
       for (var record in data) {
         final recordType = record['type'];
         final date = record['date'] as int;
         final subjectName = record['subject_name'] as String?;
         final average = record['average_grade'] as double?;
 
-        if (average == null || average.isNaN || average.isInfinite)
-          continue; // Salta medie non valide
+        if (average == null || average.isNaN || average.isInfinite) continue;
 
         subjectAveragesByDate.putIfAbsent(date, () => {});
 
@@ -757,25 +701,18 @@ class DatabaseHelper {
         }
       }
 
-      // 2. Calcola la media generale arrotondata in Dart, seguendo la logica Python
       final sortedDates = subjectAveragesByDate.keys.toList()..sort();
-      Map<String, double> currentSubjectAveragesState =
-          {}; // Mantiene lo stato delle medie per materia
+      Map<String, double> currentSubjectAveragesState = {};
 
       for (int date in sortedDates) {
-        // Aggiorna lo stato con le medie di questa data
         currentSubjectAveragesState.addAll(subjectAveragesByDate[date]!);
 
-        // Calcola la media arrotondata solo se ci sono medie disponibili
         if (currentSubjectAveragesState.isNotEmpty) {
-          // Arrotonda *prima* le medie per materia, *poi* calcola la media generale
           double roundedGeneralAvg = currentSubjectAveragesState.values
-                  .map((avg) =>
-                      roundCustom(avg).toDouble()) // Arrotonda singole medie
+                  .map((avg) => roundCustom(avg).toDouble())
                   .reduce((a, b) => a + b) /
-              currentSubjectAveragesState.length; // Media delle arrotondate
+              currentSubjectAveragesState.length;
 
-          // Aggiungi alla lista solo se la query SQL ha prodotto una media generale per questa data
           if (originalGeneralAveragesFromQuery.containsKey(date)) {
             finalRoundedAverages
                 .add({'date': date, 'average_grade': roundedGeneralAvg});
@@ -783,72 +720,54 @@ class DatabaseHelper {
         }
       }
 
-      // 3. Formatta la lista delle medie generali originali (già calcolate dalla query)
       originalGeneralAveragesFromQuery.forEach((date, avg) {
         finalOriginalAverages.add({'date': date, 'average_grade': avg});
       });
-      // Ordina per data per sicurezza (anche se la query dovrebbe già farlo)
       finalOriginalAverages
           .sort((a, b) => (a['date'] as int).compareTo(b['date'] as int));
 
       return (finalOriginalAverages, finalRoundedAverages);
     } catch (e) {
       print('Errore in returnAverageByDate (Periodo: $targetPeriodName): $e');
-      print(
-          'SQL Eseguito: $sqlCommand'); // Logga la query per facilitare il debug
-      return (
-        <Map<String, dynamic>>[],
-        <Map<String, dynamic>>[]
-      ); // Ritorna liste vuote in caso di errore
+      print('SQL Eseguito: $sqlCommand');
+      return (<Map<String, dynamic>>[], <Map<String, dynamic>>[]);
     }
   }
 
-  /// Ritorna le medie cumulative per data (originali e arrotondate)
-  /// basandosi sul periodo corrente o su un periodo specificato.
-  /// Simula `return_average_by_date_period` in Python.
-  /// Se `periodName` è null, determina il periodo corrente.
   Future<(List<Map<String, dynamic>>, List<Map<String, dynamic>>)>
       returnAverageByDatePeriod({String? periodName}) async {
     final db = await database;
     int? startDate;
     int? endDate;
-    String determinedPeriodName = 'N/A'; // Per logging
+    String determinedPeriodName = 'N/A';
 
     try {
       Period? targetPeriod;
-      // Se un nome periodo è fornito, usalo
       if (periodName != null && periodName.isNotEmpty) {
-        // Validazione nome periodo
         if (periodName != 'first_period' && periodName != 'second_period') {
           print(
               "Errore: Nome periodo non valido '$periodName'. Usare 'first_period' o 'second_period'.");
           return (<Map<String, dynamic>>[], <Map<String, dynamic>>[]);
         }
-        // Recupera dati del periodo specificato
         final periodData = await db
             .query('periods', where: 'name = ?', whereArgs: [periodName]);
         if (periodData.isNotEmpty) {
           targetPeriod = Period.fromMap(periodData.first);
           determinedPeriodName = targetPeriod.name;
         } else {
-          // Non dovrebbe succedere se il DB è inizializzato correttamente
           print(
               "Errore critico: Periodo specificato '$periodName' non trovato nel DB.");
           return (<Map<String, dynamic>>[], <Map<String, dynamic>>[]);
         }
       } else {
-        // Se non è fornito un nome, determina quello corrente
-        targetPeriod = await _getCurrentPeriodDates(); // Usa la funzione helper
+        targetPeriod = await _getCurrentPeriodDates();
         if (targetPeriod != null) {
           determinedPeriodName = targetPeriod.name;
           print("Periodo corrente determinato: $determinedPeriodName");
         } else {
-          // Gestione fallback se non si trova il periodo corrente
           print(
               "Avviso: Impossibile determinare il periodo corrente. Tentativo di fallback...");
-          // Prova a usare il secondo periodo, poi il primo, se hanno date valide
-          final periodsData = await db.query('periods',
-              orderBy: 'name DESC'); // Leggi second, then first
+          final periodsData = await db.query('periods', orderBy: 'name DESC');
           if (periodsData.isNotEmpty) {
             for (var pData in periodsData) {
               final fallbackPeriod = Period.fromMap(pData);
@@ -858,11 +777,10 @@ class DatabaseHelper {
                 determinedPeriodName = targetPeriod.name;
                 print(
                     "Usando periodo di fallback con date valide: $determinedPeriodName");
-                break; // Trovato un fallback valido
+                break;
               }
             }
           }
-          // Se ancora non si trova un periodo valido dopo il fallback
           if (targetPeriod == null) {
             print(
                 "Errore: Nessun periodo (corrente o fallback) con date valide trovato.");
@@ -871,20 +789,14 @@ class DatabaseHelper {
         }
       }
 
-      // Ottieni le date di inizio e fine dal periodo determinato (o fallback)
       startDate = targetPeriod.startDate;
       endDate = targetPeriod.endDate;
 
-      // Verifica che le date siano valide
       if (startDate == null || endDate == null) {
         print(
             "Errore: Date per il periodo '$determinedPeriodName' non impostate o non valide.");
         return (<Map<String, dynamic>>[], <Map<String, dynamic>>[]);
       }
-
-      // --- Logica di calcolo (identica a returnAverageByDate ma con le date determinate) ---
-      // Per manutenibilità, potremmo chiamare `returnAverageByDate` passando il nome del periodo
-      // trovato, ma per chiarezza e potenziale ottimizzazione futura, duplichiamo la logica qui.
 
       final String sqlCommand = """
             WITH relevant_grades AS (
@@ -915,11 +827,10 @@ class DatabaseHelper {
             UNION ALL
             SELECT 'General Average' AS type, date, NULL AS subject_name, general_average FROM general_cumulative_average
             ORDER BY date, type DESC;
-            """; //
+            """;
 
       final List<Map<String, dynamic>> data = await db.rawQuery(sqlCommand);
 
-      // Elaborazione dati (identica a returnAverageByDate)
       Map<int, Map<String, double>> subjectAveragesByDate = {};
       Map<int, double> originalGeneralAveragesFromQuery = {};
       List<Map<String, dynamic>> finalOriginalAverages = [];
@@ -930,8 +841,11 @@ class DatabaseHelper {
         final date = record['date'] as int;
         final subjectName = record['subject_name'] as String?;
         final average = record['average_grade'] as double?;
+
         if (average == null || average.isNaN || average.isInfinite) continue;
+
         subjectAveragesByDate.putIfAbsent(date, () => {});
+
         if (recordType == 'Subject Average' && subjectName != null) {
           subjectAveragesByDate[date]![subjectName] = average;
         } else if (recordType == 'General Average') {
@@ -944,81 +858,70 @@ class DatabaseHelper {
 
       for (int date in sortedDates) {
         currentSubjectAveragesState.addAll(subjectAveragesByDate[date]!);
+
         if (currentSubjectAveragesState.isNotEmpty) {
           double roundedGeneralAvg = currentSubjectAveragesState.values
                   .map((avg) => roundCustom(avg).toDouble())
                   .reduce((a, b) => a + b) /
               currentSubjectAveragesState.length;
+
           if (originalGeneralAveragesFromQuery.containsKey(date)) {
             finalRoundedAverages
                 .add({'date': date, 'average_grade': roundedGeneralAvg});
           }
         }
       }
+
       originalGeneralAveragesFromQuery.forEach((date, avg) {
         finalOriginalAverages.add({'date': date, 'average_grade': avg});
       });
       finalOriginalAverages
           .sort((a, b) => (a['date'] as int).compareTo(b['date'] as int));
-      // --- Fine Logica Duplicata ---
 
       return (finalOriginalAverages, finalRoundedAverages);
     } catch (e) {
       print(
           'Errore in returnAverageByDatePeriod (Periodo cercato: ${periodName ?? "corrente"}, determinato: $determinedPeriodName): $e');
-      // Considera di loggare anche startDate e endDate se possibile
       return (<Map<String, dynamic>>[], <Map<String, dynamic>>[]);
     }
   }
 
-  /// Ritorna le medie cumulative per data (originali e arrotondate) per una materia specifica,
-  /// basandosi sul periodo corrente o su un periodo specificato.
-  /// Simula il calcolo delle medie per una materia specifica nel periodo.
-  /// Se `periodName` è null, determina il periodo corrente.
   Future<(List<Map<String, dynamic>>, List<Map<String, dynamic>>)>
       returnAverageBySubjectAndPeriod(
           {String? periodName, required String subjectName}) async {
     final db = await database;
     int? startDate;
     int? endDate;
-    String determinedPeriodName = 'N/A'; // Per logging
+    String determinedPeriodName = 'N/A';
     final subjectUpper = subjectName.toUpperCase();
 
     try {
       Period? targetPeriod;
-      // Se un nome periodo è fornito, usalo
       if (periodName != null && periodName.isNotEmpty) {
-        // Validazione nome periodo
         if (periodName != 'first_period' && periodName != 'second_period') {
           print(
               "Errore: Nome periodo non valido '$periodName'. Usare 'first_period' o 'second_period'.");
           return (<Map<String, dynamic>>[], <Map<String, dynamic>>[]);
         }
-        // Recupera dati del periodo specificato
         final periodData = await db
             .query('periods', where: 'name = ?', whereArgs: [periodName]);
         if (periodData.isNotEmpty) {
           targetPeriod = Period.fromMap(periodData.first);
           determinedPeriodName = targetPeriod.name;
         } else {
-          // Non dovrebbe succedere se il DB è inizializzato correttamente
           print(
               "Errore critico: Periodo specificato '$periodName' non trovato nel DB.");
           return (<Map<String, dynamic>>[], <Map<String, dynamic>>[]);
         }
       } else {
-        // Se non è fornito un nome, determina quello corrente
-        targetPeriod = await _getCurrentPeriodDates(); // Usa la funzione helper
+        targetPeriod = await _getCurrentPeriodDates();
         if (targetPeriod != null) {
           determinedPeriodName = targetPeriod.name;
           print("Periodo corrente determinato: $determinedPeriodName");
         } else {
-          // Gestione fallback se non si trova il periodo corrente
           print(
               "Avviso: Impossibile determinare il periodo corrente. Tentativo di fallback...");
-          // Prova a usare il secondo periodo, poi il primo, se hanno date valide
-          final periodsData = await db.query('periods',
-              orderBy: 'name DESC'); // Leggi second, then first
+          final periodsData = await db.query('periods', orderBy: 'name DESC');
           if (periodsData.isNotEmpty) {
             for (var pData in periodsData) {
               final fallbackPeriod = Period.fromMap(pData);
@@ -1028,11 +931,10 @@ class DatabaseHelper {
                 determinedPeriodName = targetPeriod.name;
                 print(
                     "Usando periodo di fallback con date valide: $determinedPeriodName");
-                break; // Trovato un fallback valido
+                break;
               }
             }
           }
-          // Se ancora non si trova un periodo valido dopo il fallback
           if (targetPeriod == null) {
             print(
                 "Errore: Nessun periodo (corrente o fallback) con date valide trovato.");
@@ -1041,27 +943,24 @@ class DatabaseHelper {
         }
       }
 
-      // Ottieni le date di inizio e fine dal periodo determinato (o fallback)
       startDate = targetPeriod.startDate;
       endDate = targetPeriod.endDate;
 
-      // Verifica che le date siano valide
       if (startDate == null || endDate == null) {
         print(
             "Errore: Date per il periodo '$determinedPeriodName' non impostate o non valide.");
         return (<Map<String, dynamic>>[], <Map<String, dynamic>>[]);
       }
 
-      // Query SQL per la materia specifica
       final String sqlCommand = """
-            WITH relevant_grades AS ( -- Filtra voti rilevanti per il periodo, peso E materia
+            WITH relevant_grades AS (
                 SELECT date, grade, weight, subject_name
                 FROM grades
                 WHERE date BETWEEN $startDate AND $endDate
                   AND weight > 0
-                  AND subject_name = ? -- Filtra per materia
+                  AND subject_name = ?
             ),
-            cumulative_grades AS ( -- Calcola somme cumulative per materia/data (ora solo la materia specificata)
+            cumulative_grades AS (
                 SELECT
                     r1.date,
                     r1.subject_name,
@@ -1071,25 +970,23 @@ class DatabaseHelper {
                     (SELECT SUM(r2.weight) FROM relevant_grades r2 WHERE r2.date <= r1.date) as cumulative_weight
                 FROM relevant_grades r1
             ),
-            cumulative_averages AS ( -- Calcola media cumulativa per materia/data (ora solo la materia specificata)
+            cumulative_averages AS (
                 SELECT
                     date,
                     subject_name,
                     cumulative_weighted_sum * 1.0 / cumulative_weight AS average_grade
                 FROM cumulative_grades
-                WHERE cumulative_weight > 0 -- Evita divisione per zero
-                GROUP BY date, subject_name -- Ottieni l'ultima media per quella data/materia
+                WHERE cumulative_weight > 0
+                GROUP BY date, subject_name
             )
-            -- Seleziona solo le medie cumulative per la materia
             SELECT date, subject_name, average_grade
             FROM cumulative_averages
-            ORDER BY date ASC; -- Ordina per data
-            """; //
+            ORDER BY date ASC;
+            """;
 
-      final List<Map<String, dynamic>> data = await db.rawQuery(
-          sqlCommand, [subjectUpper]); // Passa il nome della materia
+      final List<Map<String, dynamic>> data =
+          await db.rawQuery(sqlCommand, [subjectUpper]);
 
-      // Elaborazione dati: Creiamo le liste per medie originali e arrotondate
       List<Map<String, dynamic>> finalOriginalAverages = [];
       List<Map<String, dynamic>> finalRoundedAverages = [];
 
@@ -1097,19 +994,15 @@ class DatabaseHelper {
         final date = record['date'] as int;
         final average = record['average_grade'] as double?;
 
-        if (average == null || average.isNaN || average.isInfinite)
-          continue; // Salta medie non valide
+        if (average == null || average.isNaN || average.isInfinite) continue;
 
-        // Aggiungi alla lista delle medie originali
         finalOriginalAverages.add({'date': date, 'average_grade': average});
 
-        // Calcola e aggiungi alla lista delle medie arrotondate
         final roundedAverage = roundCustom(average).toDouble();
         finalRoundedAverages
             .add({'date': date, 'average_grade': roundedAverage});
       }
 
-      // Le query dovrebbero già ordinarle per data, ma riordiniamo per sicurezza
       finalOriginalAverages
           .sort((a, b) => (a['date'] as int).compareTo(b['date'] as int));
       finalRoundedAverages
@@ -1123,100 +1016,92 @@ class DatabaseHelper {
     }
   }
 
-  /// Ritorna la media pesata (come stringa formattata "0.00" o "N/A") per una materia.
   Future<String> returnAverage(String subject) async {
     final db = await database;
     try {
       final result = await db.rawQuery(
-        'SELECT SUM(grade*weight)/SUM(weight) AS average_grade FROM grades WHERE subject_name = ?', //
+        'SELECT SUM(grade*weight)/SUM(weight) AS average_grade FROM grades WHERE subject_name = ?',
         [subject.toUpperCase()],
       );
 
       if (result.isNotEmpty && result.first['average_grade'] != null) {
         final average = result.first['average_grade'] as double;
-        return average.toStringAsFixed(2); // Formatta a 2 decimali
+        return average.toStringAsFixed(2);
       } else {
-        return 'N/A'; // Nessun voto o somma pesi è 0
+        return 'N/A';
       }
     } catch (e) {
       print('Errore in returnAverage: $e');
-      return 'N/A'; //
+      return 'N/A';
     }
   }
 
-  /// Ritorna la media pesata per materia in un range di date (YYYYMMDD).
   Future<String> returnAverageByPeriod(
       String subject, int startDate, int endDate) async {
     final db = await database;
     try {
       final result = await db.rawQuery(
-        'SELECT SUM(grade*weight)/SUM(weight) AS average_grade FROM grades WHERE subject_name = ? AND date BETWEEN ? AND ?', //
+        'SELECT SUM(grade*weight)/SUM(weight) AS average_grade FROM grades WHERE subject_name = ? AND date BETWEEN ? AND ?',
         [subject.toUpperCase(), startDate, endDate],
       );
 
       if (result.isNotEmpty && result.first['average_grade'] != null) {
         final average = result.first['average_grade'] as double;
-        return average.toStringAsFixed(2); //
+        return average.toStringAsFixed(2);
       } else {
-        return 'N/A'; //
+        return 'N/A';
       }
     } catch (e) {
       print('Errore in returnAverageByPeriod: $e');
-      return 'N/A'; //
+      return 'N/A';
     }
   }
 
-  /// Ritorna la media pesata per materia nel periodo corrente.
   Future<String> returnAverageByPeriodBis(String subject) async {
     final db = await database;
     try {
-      final currentPeriod = await _getCurrentPeriodDates(); // Funzione helper
+      final currentPeriod = await _getCurrentPeriodDates();
       if (currentPeriod == null) {
-        return 'N/A'; // Non riesco a determinare il periodo
+        return 'N/A';
       }
 
       return await returnAverageByPeriod(
-          subject, currentPeriod.startDate!, currentPeriod.endDate!); //
+          subject, currentPeriod.startDate!, currentPeriod.endDate!);
     } catch (e) {
       print('Errore in returnAverageByPeriodBis: $e');
-      return 'N/A'; //
+      return 'N/A';
     }
   }
 
-  /// Ritorna le medie pesate per tutte le materie (inclusi N/A per materie senza voti).
   Future<List<(String, String)>> returnAverages() async {
     final db = await database;
     List<(String, String)> results = [];
     try {
-      // Ottieni le medie calcolate
       final avgMaps = await db.rawQuery(
-          'SELECT subject_name, SUM(grade*weight)/SUM(weight) AS average_grade FROM grades GROUP BY subject_name'); //
+          'SELECT subject_name, SUM(grade*weight)/SUM(weight) AS average_grade FROM grades GROUP BY subject_name');
 
       Map<String, String> calculatedAverages = {};
       for (var map in avgMaps) {
         final subject = map['subject_name'] as String;
         final average = map['average_grade'] as double?;
         calculatedAverages[subject] =
-            average != null ? average.toStringAsFixed(2) : 'N/A'; //
+            average != null ? average.toStringAsFixed(2) : 'N/A';
       }
 
-      // Ottieni tutte le materie definite
-      final allSubjectsList = await listSubjects(); //
+      final allSubjectsList = await listSubjects();
       final allSubjectNames = allSubjectsList.map((s) => s.$1).toList();
 
-      // Combina: per ogni materia definita, prendi la media calcolata o 'N/A'
       for (var subjectName in allSubjectNames) {
-        results.add((subjectName, calculatedAverages[subjectName] ?? 'N/A')); //
+        results.add((subjectName, calculatedAverages[subjectName] ?? 'N/A'));
       }
 
       return results;
     } catch (e) {
       print('Errore in returnAverages: $e');
-      return results; // Ritorna quello che ha calcolato finora
+      return results;
     }
   }
 
-  /// Ritorna le medie pesate per tutte le materie nel periodo corrente.
   Future<List<(String, String)>> returnAveragesByPeriod() async {
     final db = await database;
     List<(String, String)> results = [];
@@ -1226,46 +1111,39 @@ class DatabaseHelper {
           currentPeriod.startDate == null ||
           currentPeriod.endDate == null) {
         print("Periodo corrente non valido o non impostato.");
-        // Potresti voler ritornare le medie generali se il periodo non è impostato
-        // return await returnAverages();
-        // Oppure ritornare N/A per tutte le materie
         final allSubjectsList = await listSubjects();
         return allSubjectsList.map((s) => (s.$1, 'N/A')).toList();
       }
       final startDate = currentPeriod.startDate!;
       final endDate = currentPeriod.endDate!;
 
-      // Calcola medie nel periodo
       final avgMaps = await db.rawQuery(
           '''SELECT subject_name, SUM(grade*weight)/SUM(weight) AS average_grade
                FROM grades
                WHERE date BETWEEN ? AND ?
-               GROUP BY subject_name''', //
-          [startDate, endDate]);
+               GROUP BY subject_name''', [startDate, endDate]);
 
       Map<String, String> calculatedAverages = {};
       for (var map in avgMaps) {
         final subject = map['subject_name'] as String;
         final average = map['average_grade'] as double?;
         calculatedAverages[subject] =
-            average != null ? average.toStringAsFixed(2) : 'N/A'; //
+            average != null ? average.toStringAsFixed(2) : 'N/A';
       }
 
-      // Combina con tutte le materie
-      final allSubjectsList = await listSubjects(); //
+      final allSubjectsList = await listSubjects();
       final allSubjectNames = allSubjectsList.map((s) => s.$1).toList();
 
       for (var subjectName in allSubjectNames) {
-        results.add((subjectName, calculatedAverages[subjectName] ?? 'N/A')); //
+        results.add((subjectName, calculatedAverages[subjectName] ?? 'N/A'));
       }
       return results;
     } catch (e) {
       print('Errore in returnAveragesByPeriod: $e');
-      return results; //
+      return results;
     }
   }
 
-  /// Ritorna la media generale (media delle medie delle materie) nel periodo corrente.
   Future<String> returnGeneralAverageByPeriod() async {
     final db = await database;
     try {
@@ -1278,7 +1156,6 @@ class DatabaseHelper {
       final startDate = currentPeriod.startDate!;
       final endDate = currentPeriod.endDate!;
 
-      // Query per calcolare la media delle medie delle materie nel periodo
       final result = await db.rawQuery('''
             SELECT AVG(average_grade) AS overall_average
             FROM (
@@ -1287,272 +1164,28 @@ class DatabaseHelper {
                 FROM grades
                 WHERE date BETWEEN ? AND ?
                 GROUP BY subject_name
-                HAVING SUM(weight) > 0 -- Evita divisione per zero se materia non ha voti pesati
+                HAVING SUM(weight) > 0
             ) AS subject_averages;
-        ''', [startDate, endDate]); // (Query adattata)
+        ''', [startDate, endDate]);
 
       if (result.isNotEmpty && result.first['overall_average'] != null) {
         final average = result.first['overall_average'] as double;
-        return average.toStringAsFixed(2); //
+        return average.toStringAsFixed(2);
       } else {
-        return 'N/A'; //
+        return 'N/A';
       }
     } catch (e) {
       print('Errore in returnGeneralAverageByPeriod: $e');
-      return 'N/A'; //
+      return 'N/A';
     }
   }
 
-  /// Elimina un voto dato il suo ID.
-  Future<bool> deleteGrade(int id) async {
-    final db = await database;
-    try {
-      final count = await db.delete(
-        'grades',
-        where: 'id = ?',
-        whereArgs: [id],
-      ); // - Adattato per usare ID intero
-      return count > 0; // Ritorna true se almeno una riga è stata eliminata
-    } catch (e) {
-      print('Errore in deleteGrade: $e');
-      return false; //
-    }
-  }
-
-  /// Modifica un voto esistente.
-  /// 'data' è una mappa che dovrebbe contenere le chiavi:
-  /// 'grade_id', 'subject', 'grade', 'date', 'grade_weight', 'type'.
-  Future<bool> editGrade(Map<String, dynamic> data) async {
-    final db = await database;
-    try {
-      // Prepara i dati per l'aggiornamento
-      final values = {
-        'subject_name': (data['subject'] as String?)?.toUpperCase(),
-        'grade': data['grade'], // Assumiamo sia già double
-        'date': data['date'], // Assumiamo sia già int YYYYMMDD
-        'weight': data['grade_weight'], // Assumiamo sia già double
-        'type': data['type'],
-      };
-      // Rimuovi eventuali valori null per non sovrascrivere colonne con NULL involontariamente
-      values.removeWhere((key, value) => value == null);
-
-      if (values.isEmpty) {
-        print("Nessun dato valido fornito per l'aggiornamento del voto.");
-        return false;
-      }
-
-      final count = await db.update(
-        'grades',
-        values,
-        where: 'id = ?',
-        whereArgs: [data['grade_id']], // Assumiamo sia già int
-      );
-      return count > 0; // True se almeno una riga è stata aggiornata
-    } catch (e) {
-      print('Errore in editGrade: $e');
-      return false; //
-    }
-  }
-
-  /// Imposta (o aggiorna) il colore primario nelle impostazioni.
-  Future<bool> setPrimaryColour(String colour) async {
-    final db = await database;
-    try {
-      // Controlla se esiste già una riga (assumiamo id=1 per la riga delle impostazioni)
-      final existing =
-          await db.query('settings', where: 'id = ?', whereArgs: [1]); //
-
-      if (existing.isNotEmpty) {
-        // Aggiorna
-        await db.update(
-          'settings',
-          {'primary_colour': colour},
-          where: 'id = ?',
-          whereArgs: [1], //
-        );
-      } else {
-        // Inserisci (forzando id=1 se la tabella è vuota, altrimenti lascia fare AUTOINCREMENT se id non è 1)
-        await db.insert(
-          'settings',
-          {
-            'id': 1,
-            'primary_colour': colour
-          }, // Potrebbe essere necessario gestire l'ID se non si vuole forzarlo a 1
-          conflictAlgorithm:
-              ConflictAlgorithm.replace, // Sostituisce se id 1 esiste per caso
-        ); // - Adattato
-      }
-      return true;
-    } catch (e) {
-      print('Errore in setPrimaryColour: $e');
-      return false; //
-    }
-  }
-
-  /// Elimina una materia e tutti i voti associati.
-  Future<bool> deleteSubject(String subject) async {
-    final db = await database;
-    final subjectUpper = subject.toUpperCase();
-    try {
-      // Usare una transazione per assicurare che entrambe le delete avvengano o nessuna
-      await db.transaction((txn) async {
-        // Elimina i voti associati
-        await txn.delete(
-          'grades',
-          where: 'subject_name = ?',
-          whereArgs: [subjectUpper], //
-        );
-        // Elimina la materia
-        await txn.delete(
-          'subject_list',
-          where: 'subject = ?',
-          whereArgs: [subjectUpper], //
-        );
-      });
-      return true;
-    } catch (e) {
-      print('Errore in deleteSubject: $e');
-      return false; //
-    }
-  }
-
-  /// Rinomina una materia (nella lista materie e nei voti associati).
-  /// Lancia 'duplicate subject' se il nuovo nome esiste già.
-  Future<bool> renameSubject(
-      String oldSubjectName, String newSubjectName) async {
-    final db = await database;
-    final oldUpper = oldSubjectName.toUpperCase();
-    final newUpper = newSubjectName.toUpperCase();
-
-    if (oldUpper == newUpper) return true; // Nessun cambiamento richiesto
-
-    try {
-      await db.transaction((txn) async {
-        // Aggiorna i voti
-        await txn.update(
-          'grades',
-          {'subject_name': newUpper},
-          where: 'subject_name = ?',
-          whereArgs: [oldUpper], //
-        );
-        // Aggiorna la materia
-        await txn.update(
-          'subject_list',
-          {'subject': newUpper},
-          where: 'subject = ?',
-          whereArgs: [oldUpper], //
-        );
-      });
-      print("Materia rinominata"); //
-      return true;
-    } on DatabaseException catch (e) {
-      if (e.isUniqueConstraintError()) {
-        throw 'duplicate subject'; // - Simula il comportamento Python
-      } else {
-        print('Errore Database in renameSubject: $e');
-        rethrow;
-      }
-    } catch (e) {
-      print('Errore generico in renameSubject: $e');
-      return false; //
-    }
-  }
-
-  /// Imposta l'obiettivo per una data materia.
-  Future<bool> setObjective(String subject, double objective) async {
-    final db = await database;
-    try {
-      final count = await db.update(
-        'subject_list',
-        {'objective': objective},
-        where: 'subject = ?',
-        whereArgs: [subject.toUpperCase()], //
-      );
-      return count > 0; // True se la materia esisteva ed è stata aggiornata
-    } catch (e) {
-      print('Errore in setObjective: $e');
-      return false; //
-    }
-  }
-
-  /// Rimuove l'obiettivo associato a una materia (imposta a NULL).
-  /// Ritorna true se la materia esisteva ed è stata aggiornata.
-  Future<bool> removeObjective(String subject) async {
-    final db = await database;
-    try {
-      final count = await db.update(
-        'subject_list',
-        {'objective': null},
-        where: 'subject = ?',
-        whereArgs: [subject.toUpperCase()],
-      );
-      return count > 0;
-    } catch (e) {
-      print('Errore in removeObjective: $e');
-      return false;
-    }
-  }
-
-  /// Imposta le date di inizio e fine per un periodo ('first_period' o 'second_period').
-  /// Ritorna true se successo, 'invalid dates' se start > end o se c'è sovrapposizione invalida.
-  Future<dynamic> setPeriod(
-      String periodName, int startDate, int endDate) async {
-    final db = await database;
-
-    if (startDate > endDate) {
-      return 'invalid dates'; //
-    }
-
-    try {
-      // Controllo sovrapposizione se stiamo impostando il secondo periodo
-      if (periodName == 'second_period') {
-        final firstPeriodData = await db.query('periods',
-            where: 'name = ?', whereArgs: ['first_period']); //
-        if (firstPeriodData.isNotEmpty) {
-          final firstPeriod = Period.fromMap(firstPeriodData.first);
-          // Controlla se la data di fine del primo periodo è valida e successiva all'inizio del secondo
-          if (firstPeriod.endDate != null &&
-              firstPeriod.endDate! >= startDate) {
-            // Python controllava start_date > end_date, qui controllo >=
-            return 'invalid dates'; // Date sovrapposte o non sequenziali - Logica adattata
-          }
-        }
-      }
-      // Controllo sovrapposizione se stiamo impostando il primo periodo
-      else if (periodName == 'first_period') {
-        final secondPeriodData = await db
-            .query('periods', where: 'name = ?', whereArgs: ['second_period']);
-        if (secondPeriodData.isNotEmpty) {
-          final secondPeriod = Period.fromMap(secondPeriodData.first);
-          if (secondPeriod.startDate != null &&
-              secondPeriod.startDate! <= endDate) {
-            return 'invalid dates'; // Date sovrapposte o non sequenziali
-          }
-        }
-      }
-
-      // Aggiorna il periodo
-      final count = await db.update(
-        'periods',
-        {'start_date': startDate, 'end_date': endDate},
-        where: 'name = ?',
-        whereArgs: [periodName], //
-      );
-      return count > 0; // True se il record esisteva ed è stato aggiornato
-    } catch (e) {
-      print('Errore in setPeriod: $e');
-      return false; //
-    }
-  }
-
-  /// Ritorna le date di inizio e fine per tutti i periodi (come oggetti Period).
   Future<List<Period>> getPeriods() async {
     final db = await database;
     try {
       final List<Map<String, dynamic>> maps =
-          await db.query('periods', orderBy: 'name'); //
+          await db.query('periods', orderBy: 'name');
       if (maps.isEmpty) {
-        // Se la tabella è vuota per qualche motivo, ritorna i default 'N/A'
         return [
           Period(name: 'first_period', startDate: null, endDate: null),
           Period(name: 'second_period', startDate: null, endDate: null),
@@ -1561,7 +1194,6 @@ class DatabaseHelper {
       return List.generate(maps.length, (i) => Period.fromMap(maps[i]));
     } catch (e) {
       print('Errore in getPeriods: $e');
-      // Ritorna valori di default che rappresentano 'N/A'
       return [
         Period(name: 'first_period', startDate: null, endDate: null),
         Period(name: 'second_period', startDate: null, endDate: null),
@@ -1569,171 +1201,6 @@ class DatabaseHelper {
     }
   }
 
-  // --- Funzioni Helper Interne ---
-
-  /// Determina le date del periodo corrente basandosi sulla data odierna.
-  Future<Period?> _getCurrentPeriodDates() async {
-    final db = await database;
-    try {
-      final todayInt = int.parse(DateFormat('yyyyMMdd')
-          .format(DateTime.now())); // Data odierna come YYYYMMDD
-
-      final periodsData = await db.query('periods', orderBy: 'name'); //
-      if (periodsData.length < 2) return null; // Dati periodi mancanti
-
-      final firstPeriod = Period.fromMap(
-          periodsData[0]); // Assumendo 'first_period' sia il primo
-      final secondPeriod = Period.fromMap(
-          periodsData[1]); // Assumendo 'second_period' sia il secondo
-
-      // Controlla se oggi è nel primo periodo
-      if (firstPeriod.startDate != null &&
-          firstPeriod.endDate != null &&
-          todayInt >= firstPeriod.startDate! &&
-          todayInt <= firstPeriod.endDate!) {
-        return firstPeriod;
-      }
-      // Controlla se oggi è nel secondo periodo
-      // La logica Python (first_period[1] < today <= second_period[1]) implica che
-      // il secondo periodo inizia *dopo* la fine del primo.
-      if (secondPeriod.startDate != null &&
-          secondPeriod.endDate != null &&
-          todayInt >= secondPeriod.startDate! &&
-          todayInt <= secondPeriod.endDate!) {
-        // Controllo aggiuntivo opzionale: verifica che l'inizio del secondo sia dopo la fine del primo
-        if (firstPeriod.endDate == null ||
-            secondPeriod.startDate! > firstPeriod.endDate!) {
-          return secondPeriod;
-        }
-      }
-
-      // Fallback: se non siamo in nessun periodo definito, quale usare?
-      // Il codice Python usa il secondo periodo come fallback
-      // Ritorniamo il secondo periodo se ha date valide, altrimenti null
-      if (secondPeriod.startDate != null && secondPeriod.endDate != null) {
-        return secondPeriod;
-      } else if (firstPeriod.startDate != null && firstPeriod.endDate != null) {
-        // Se il secondo non è valido ma il primo sì, forse usare il primo?
-        // Decidi la logica di fallback migliore per il tuo caso.
-        // Qui usiamo il secondo come da Python, anche se potrebbe non avere date.
-        return secondPeriod; // Potrebbe avere date null
-      }
-
-      return null; // Non riesco a determinare un periodo valido
-    } catch (e) {
-      print("Errore nel determinare il periodo corrente: $e");
-      return null;
-    }
-  }
-
-  // --- Funzioni di Raggiungimento Obiettivi ---
-  // Queste richiedono il calcolo della media nel periodo corrente e il confronto con l'obiettivo
-
-  /// Valuta il raggiungimento dell'obiettivo per una materia nel periodo corrente.
-  Future<String> objectiveAchievementSubjectByPeriod(String subject) async {
-    final db = await database;
-    final subjectUpper = subject.toUpperCase();
-
-    try {
-      // 1. Ottieni l'obiettivo per la materia
-      final objectiveData = await db.query('subject_list',
-          columns: ['objective'],
-          where: 'subject = ?',
-          whereArgs: [subjectUpper]); //
-      if (objectiveData.isEmpty || objectiveData.first['objective'] == null) {
-        return "not enough data"; // Obiettivo non impostato
-      }
-      final objective = objectiveData.first['objective'] as double;
-
-      // 2. Calcola la media della materia nel periodo corrente
-      final averageString = await returnAverageByPeriodBis(
-          subjectUpper); // Usa la funzione helper
-      if (averageString == 'N/A') {
-        return "not enough data"; // Media non calcolabile
-      }
-      final average = double.parse(averageString);
-
-      // 3. Confronta media e obiettivo (logica di confronto identica a Python)
-      if (average >= objective) {
-        return "completely reached";
-      }
-      if (roundCustom(average) >= objective) {
-        // Usa la funzione roundCustom
-        return "reached";
-      }
-      if (average >= objective - 1) {
-        return "almost reached";
-      }
-      return "not reached";
-    } catch (e) {
-      print("Errore in objectiveAchievementSubjectByPeriod: $e");
-      // Il codice Python ritorna False in caso di errore generico, qui potremmo lanciare l'eccezione o ritornare uno stato di errore
-      return "error"; // O lancia Exception('Errore nel calcolo obiettivo: $e'); //
-    }
-  }
-
-  /// Valuta il raggiungimento degli obiettivi per TUTTE le materie nel periodo corrente.
-  /// Ritorna una tupla: (Mappa Risultati per Materia, Mappa Conteggi Risultati, Numero Totale Materie)
-  Future<(Map<String, String>, Map<String, int>, int)>
-      objectiveAchievementByPeriod() async {
-    Map<String, String> resultsBySubject = {};
-    Map<String, int> countResult = {
-      'completely reached': 0, 'reached': 0, 'almost reached': 0,
-      'not reached': 0, 'not enough data': 0,
-      'error': 0, // Aggiunto stato errore
-    }; //
-
-    try {
-      // Ottieni tutte le materie
-      final allSubjectsList = await listSubjects();
-      final subjectNames = allSubjectsList.map((s) => s.$1).toList();
-      final subjectNumber = subjectNames.length; //
-
-      // Calcola lo stato per ogni materia
-      for (String subjectName in subjectNames) {
-        final status = await objectiveAchievementSubjectByPeriod(
-            subjectName); // Riutilizza la funzione singola
-        resultsBySubject[subjectName] = status;
-        countResult[status] =
-            (countResult[status] ?? 0) + 1; // Aggiorna il conteggio
-      }
-
-      return (resultsBySubject, countResult, subjectNumber);
-    } catch (e) {
-      print("Errore generale in objectiveAchievementByPeriod: $e");
-      // In caso di errore grave, ritorna mappe vuote e 0 materie
-      return (
-        <String, String>{},
-        countResult..update('error', (v) => v + 1),
-        0
-      ); // Specifica il tipo Map<String, String>
-    }
-  }
-
-  // --- Funzioni per la gestione dell'orario scolastico (DiaryPage) ---
-
-  /// Aggiunge una nuova lezione all'orario.
-  Future<bool> addLesson(Lesson lesson) async {
-    final db = await database;
-    try {
-      // Assicurati che il nome della materia sia in maiuscolo per consistenza
-      final Map<String, dynamic> lessonMap = lesson.toMap();
-      lessonMap['subject_name'] = (lessonMap['subject_name'] as String).toUpperCase();
-
-      await db.insert(
-        'timetable',
-        lessonMap..remove('id'), // Rimuovi id perché è AUTOINCREMENT
-        conflictAlgorithm: ConflictAlgorithm.replace, // Sostituisce se l'ID esiste
-      );
-      return true;
-    } catch (e) {
-      print('Errore in addLesson: $e');
-      return false;
-    }
-  }
-
-  /// Recupera tutte le lezioni per un giorno della settimana specifico.
-  /// `dayOfWeek`: 1=Lunedì, 2=Martedì, ..., 7=Domenica.
   Future<List<Lesson>> getLessonsForDay(int dayOfWeek) async {
     final db = await database;
     try {
@@ -1741,7 +1208,7 @@ class DatabaseHelper {
         'timetable',
         where: 'day_of_week = ?',
         whereArgs: [dayOfWeek],
-        orderBy: 'start_time ASC', // Ordina per orario di inizio
+        orderBy: 'start_time ASC',
       );
       return List.generate(maps.length, (i) => Lesson.fromMap(maps[i]));
     } catch (e) {
@@ -1750,13 +1217,12 @@ class DatabaseHelper {
     }
   }
 
-  /// Recupera tutte le lezioni dell'orario.
   Future<List<Lesson>> getAllLessons() async {
     final db = await database;
     try {
       final List<Map<String, dynamic>> maps = await db.query(
         'timetable',
-        orderBy: 'day_of_week ASC, start_time ASC', // Ordina per giorno e orario
+        orderBy: 'day_of_week ASC, start_time ASC',
       );
       return List.generate(maps.length, (i) => Lesson.fromMap(maps[i]));
     } catch (e) {
@@ -1765,65 +1231,6 @@ class DatabaseHelper {
     }
   }
 
-  /// Aggiorna una lezione esistente.
-  Future<bool> updateLesson(Lesson lesson) async {
-    final db = await database;
-    try {
-      if (lesson.id == null) {
-        print('Errore: ID della lezione non fornito per l\'aggiornamento.');
-        return false;
-      }
-      final Map<String, dynamic> lessonMap = lesson.toMap();
-      lessonMap['subject_name'] = (lessonMap['subject_name'] as String).toUpperCase(); // Assicurati sia maiuscolo
-
-      final count = await db.update(
-        'timetable',
-        lessonMap,
-        where: 'id = ?',
-        whereArgs: [lesson.id],
-      );
-      return count > 0;
-    } catch (e) {
-      print('Errore in updateLesson: $e');
-      return false;
-    }
-  }
-
-  /// Elimina una lezione dato il suo ID.
-  Future<bool> deleteLesson(int id) async {
-    final db = await database;
-    try {
-      final count = await db.delete(
-        'timetable',
-        where: 'id = ?',
-        whereArgs: [id],
-      );
-      return count > 0;
-    } catch (e) {
-      print('Errore in deleteLesson: $e');
-      return false;
-    }
-  }
-
-  // --- Funzioni per la gestione degli eventi del calendario ---
-
-  /// Aggiunge un nuovo evento al calendario.
-  Future<bool> addCalendarEvent(CalendarEvent event) async {
-    final db = await database;
-    try {
-      await db.insert(
-        'calendar_events',
-        event.toMap()..remove('id'),
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
-      return true;
-    } catch (e) {
-      print('Errore in addCalendarEvent: $e');
-      return false;
-    }
-  }
-
-  /// Recupera tutti gli eventi per una data specifica.
   Future<List<CalendarEvent>> getCalendarEventsForDate(DateTime date) async {
     final db = await database;
     final dateInt = int.parse(DateFormat('yyyyMMdd').format(date));
@@ -1832,7 +1239,7 @@ class DatabaseHelper {
         'calendar_events',
         where: 'date = ?',
         whereArgs: [dateInt],
-        orderBy: 'title ASC', // O un altro criterio di ordinamento
+        orderBy: 'title ASC',
       );
       return List.generate(maps.length, (i) => CalendarEvent.fromMap(maps[i]));
     } catch (e) {
@@ -1841,7 +1248,6 @@ class DatabaseHelper {
     }
   }
 
-  /// Recupera tutti gli eventi del calendario.
   Future<List<CalendarEvent>> getAllCalendarEvents() async {
     final db = await database;
     try {
@@ -1856,7 +1262,187 @@ class DatabaseHelper {
     }
   }
 
-  /// Aggiorna un evento del calendario esistente.
+  // ---------- UPDATE FUNCTIONS ----------
+
+  Future<bool> editGrade(Map<String, dynamic> data) async {
+    final db = await database;
+    try {
+      final values = {
+        'subject_name': (data['subject'] as String?)?.toUpperCase(),
+        'grade': data['grade'],
+        'date': data['date'],
+        'weight': data['grade_weight'],
+        'type': data['type'],
+      };
+      values.removeWhere((key, value) => value == null);
+
+      if (values.isEmpty) {
+        print("Nessun dato valido fornito per l'aggiornamento del voto.");
+        return false;
+      }
+
+      final count = await db.update(
+        'grades',
+        values,
+        where: 'id = ?',
+        whereArgs: [data['grade_id']],
+      );
+      return count > 0;
+    } catch (e) {
+      print('Errore in editGrade: $e');
+      return false;
+    }
+  }
+
+  Future<bool> setPrimaryColour(String colour) async {
+    final db = await database;
+    try {
+      final existing =
+          await db.query('settings', where: 'id = ?', whereArgs: [1]);
+
+      if (existing.isNotEmpty) {
+        await db.update(
+          'settings',
+          {'primary_colour': colour},
+          where: 'id = ?',
+          whereArgs: [1],
+        );
+      } else {
+        await db.insert(
+          'settings',
+          {'id': 1, 'primary_colour': colour},
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+      }
+      return true;
+    } catch (e) {
+      print('Errore in setPrimaryColour: $e');
+      return false;
+    }
+  }
+
+  Future<bool> renameSubject(
+      String oldSubjectName, String newSubjectName) async {
+    final db = await database;
+    final oldUpper = oldSubjectName.toUpperCase();
+    final newUpper = newSubjectName.toUpperCase();
+
+    if (oldUpper == newUpper) return true;
+
+    try {
+      await db.transaction((txn) async {
+        await txn.update(
+          'grades',
+          {'subject_name': newUpper},
+          where: 'subject_name = ?',
+          whereArgs: [oldUpper],
+        );
+        await txn.update(
+          'subject_list',
+          {'subject': newUpper},
+          where: 'subject = ?',
+          whereArgs: [oldUpper],
+        );
+      });
+      print("Materia rinominata");
+      return true;
+    } on DatabaseException catch (e) {
+      if (e.isUniqueConstraintError()) {
+        throw 'duplicate subject';
+      } else {
+        print('Errore Database in renameSubject: $e');
+        rethrow;
+      }
+    } catch (e) {
+      print('Errore generico in renameSubject: $e');
+      return false;
+    }
+  }
+
+  Future<bool> setObjective(String subject, double objective) async {
+    final db = await database;
+    try {
+      final count = await db.update(
+        'subject_list',
+        {'objective': objective},
+        where: 'subject = ?',
+        whereArgs: [subject.toUpperCase()],
+      );
+      return count > 0;
+    } catch (e) {
+      print('Errore in setObjective: $e');
+      return false;
+    }
+  }
+
+  Future<dynamic> setPeriod(
+      String periodName, int startDate, int endDate) async {
+    final db = await database;
+
+    if (startDate > endDate) {
+      return 'invalid dates';
+    }
+
+    try {
+      if (periodName == 'second_period') {
+        final firstPeriodData = await db
+            .query('periods', where: 'name = ?', whereArgs: ['first_period']);
+        if (firstPeriodData.isNotEmpty) {
+          final firstPeriod = Period.fromMap(firstPeriodData.first);
+          if (firstPeriod.endDate != null &&
+              firstPeriod.endDate! >= startDate) {
+            return 'invalid dates';
+          }
+        }
+      } else if (periodName == 'first_period') {
+        final secondPeriodData = await db
+            .query('periods', where: 'name = ?', whereArgs: ['second_period']);
+        if (secondPeriodData.isNotEmpty) {
+          final secondPeriod = Period.fromMap(secondPeriodData.first);
+          if (secondPeriod.startDate != null &&
+              secondPeriod.startDate! <= endDate) {
+            return 'invalid dates';
+          }
+        }
+      }
+
+      final count = await db.update(
+        'periods',
+        {'start_date': startDate, 'end_date': endDate},
+        where: 'name = ?',
+        whereArgs: [periodName],
+      );
+      return count > 0;
+    } catch (e) {
+      print('Errore in setPeriod: $e');
+      return false;
+    }
+  }
+
+  Future<bool> updateLesson(Lesson lesson) async {
+    final db = await database;
+    try {
+      if (lesson.id == null) {
+        print('Errore: ID della lezione non fornito per l\'aggiornamento.');
+        return false;
+      }
+      final Map<String, dynamic> lessonMap = lesson.toMap();
+      lessonMap['subject_name'] =
+          (lessonMap['subject_name'] as String).toUpperCase();
+
+      final count = await db.update(
+        'timetable',
+        lessonMap,
+        where: 'id = ?',
+        whereArgs: [lesson.id],
+      );
+      return count > 0;
+    } catch (e) {
+      print('Errore in updateLesson: $e');
+      return false;
+    }
+  }
+
   Future<bool> updateCalendarEvent(CalendarEvent event) async {
     final db = await database;
     try {
@@ -1877,7 +1463,77 @@ class DatabaseHelper {
     }
   }
 
-  /// Elimina un evento del calendario dato il suo ID.
+  // ---------- REMOVE FUNCTIONS ----------
+
+  Future<bool> deleteGrade(int id) async {
+    final db = await database;
+    try {
+      final count = await db.delete(
+        'grades',
+        where: 'id = ?',
+        whereArgs: [id],
+      );
+      return count > 0;
+    } catch (e) {
+      print('Errore in deleteGrade: $e');
+      return false;
+    }
+  }
+
+  Future<bool> deleteSubject(String subject) async {
+    final db = await database;
+    final subjectUpper = subject.toUpperCase();
+    try {
+      await db.transaction((txn) async {
+        await txn.delete(
+          'grades',
+          where: 'subject_name = ?',
+          whereArgs: [subjectUpper],
+        );
+        await txn.delete(
+          'subject_list',
+          where: 'subject = ?',
+          whereArgs: [subjectUpper],
+        );
+      });
+      return true;
+    } catch (e) {
+      print('Errore in deleteSubject: $e');
+      return false;
+    }
+  }
+
+  Future<bool> removeObjective(String subject) async {
+    final db = await database;
+    try {
+      final count = await db.update(
+        'subject_list',
+        {'objective': null},
+        where: 'subject = ?',
+        whereArgs: [subject.toUpperCase()],
+      );
+      return count > 0;
+    } catch (e) {
+      print('Errore in removeObjective: $e');
+      return false;
+    }
+  }
+
+  Future<bool> deleteLesson(int id) async {
+    final db = await database;
+    try {
+      final count = await db.delete(
+        'timetable',
+        where: 'id = ?',
+        whereArgs: [id],
+      );
+      return count > 0;
+    } catch (e) {
+      print('Errore in deleteLesson: $e');
+      return false;
+    }
+  }
+
   Future<bool> deleteCalendarEvent(int id) async {
     final db = await database;
     try {
@@ -1893,11 +1549,230 @@ class DatabaseHelper {
     }
   }
 
-  // --- Metodo per chiudere il DB (Opzionale) ---
+  // ---------- CREATE FUNCTIONS ----------
+
+  Future<bool> addSubject(String subject) async {
+    final db = await database;
+    try {
+      await db.insert(
+        'subject_list',
+        {'subject': subject.toUpperCase()},
+        conflictAlgorithm: ConflictAlgorithm.fail,
+      );
+      return true;
+    } on DatabaseException catch (e) {
+      if (e.isUniqueConstraintError()) {
+        throw 'duplicate subject';
+      } else {
+        print('Errore Database in addSubject: $e');
+        rethrow;
+      }
+    } catch (e) {
+      print('Errore generico in addSubject: $e');
+      return false;
+    }
+  }
+
+  Future<bool> addGrade(String subjectName, double grade, int date,
+      double weight, String type) async {
+    final db = await database;
+    try {
+      final gradeObj = Grade(
+          subjectName: subjectName.toUpperCase(),
+          grade: grade,
+          date: date,
+          weight: weight,
+          type: type);
+      await db.insert(
+        'grades',
+        gradeObj.toMap()..remove('id'),
+        conflictAlgorithm: ConflictAlgorithm.ignore,
+      );
+      return true;
+    } catch (e) {
+      print('Errore in addGrade: $e');
+      return false;
+    }
+  }
+
+  Future<bool> addLesson(Lesson lesson) async {
+    final db = await database;
+    try {
+      final Map<String, dynamic> lessonMap = lesson.toMap();
+      lessonMap['subject_name'] =
+          (lessonMap['subject_name'] as String).toUpperCase();
+
+      await db.insert(
+        'timetable',
+        lessonMap..remove('id'),
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+      return true;
+    } catch (e) {
+      print('Errore in addLesson: $e');
+      return false;
+    }
+  }
+
+  Future<bool> addCalendarEvent(CalendarEvent event) async {
+    final db = await database;
+    try {
+      await db.insert(
+        'calendar_events',
+        event.toMap()..remove('id'),
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+      return true;
+    } catch (e) {
+      print('Errore in addCalendarEvent: $e');
+      return false;
+    }
+  }
+
+  // ---------- UTILITY AND ACHIEVEMENT FUNCTIONS ----------
+
+  int roundCustom(double n) {
+    return (n + 0.5).floor();
+  }
+
+  Future<String> objectiveAchievementSubjectByPeriod(String subject) async {
+    final db = await database;
+    final subjectUpper = subject.toUpperCase();
+
+    try {
+      final objectiveData = await db.query('subject_list',
+          columns: ['objective'],
+          where: 'subject = ?',
+          whereArgs: [subjectUpper]);
+      if (objectiveData.isEmpty || objectiveData.first['objective'] == null) {
+        return "not enough data";
+      }
+      final objective = objectiveData.first['objective'] as double;
+
+      final averageString = await returnAverageByPeriodBis(subjectUpper);
+      if (averageString == 'N/A') {
+        return "not enough data";
+      }
+      final average = double.parse(averageString);
+
+      if (average >= objective) {
+        return "completely reached";
+      }
+      if (roundCustom(average) >= objective) {
+        return "reached";
+      }
+      if (average >= objective - 1) {
+        return "almost reached";
+      }
+      return "not reached";
+    } catch (e) {
+      print("Errore in objectiveAchievementSubjectByPeriod: $e");
+      return "error";
+    }
+  }
+
+  Future<(Map<String, String>, Map<String, int>, int)>
+      objectiveAchievementByPeriod() async {
+    Map<String, String> resultsBySubject = {};
+    Map<String, int> countResult = {
+      'completely reached': 0,
+      'reached': 0,
+      'almost reached': 0,
+      'not reached': 0,
+      'not enough data': 0,
+      'error': 0,
+    };
+
+    try {
+      final allSubjectsList = await listSubjects();
+      final subjectNames = allSubjectsList.map((s) => s.$1).toList();
+      final subjectNumber = subjectNames.length;
+
+      for (String subjectName in subjectNames) {
+        final status = await objectiveAchievementSubjectByPeriod(subjectName);
+        resultsBySubject[subjectName] = status;
+        countResult[status] = (countResult[status] ?? 0) + 1;
+      }
+
+      return (resultsBySubject, countResult, subjectNumber);
+    } catch (e) {
+      print("Errore generale in objectiveAchievementByPeriod: $e");
+      return (
+        <String, String>{},
+        countResult..update('error', (v) => v + 1),
+        0
+      );
+    }
+  }
+
+  // ---------- INTERNAL HELPERS ----------
+
+  Future<Period?> _getCurrentPeriodDates() async {
+    final db = await database;
+    try {
+      final todayInt = int.parse(DateFormat('yyyyMMdd').format(DateTime.now()));
+
+      final periodsData = await db.query('periods', orderBy: 'name');
+      if (periodsData.length < 2) return null;
+
+      final firstPeriod = Period.fromMap(periodsData[0]);
+      final secondPeriod = Period.fromMap(periodsData[1]);
+
+      if (firstPeriod.startDate != null &&
+          firstPeriod.endDate != null &&
+          todayInt >= firstPeriod.startDate! &&
+          todayInt <= firstPeriod.endDate!) {
+        return firstPeriod;
+      }
+      if (secondPeriod.startDate != null &&
+          secondPeriod.endDate != null &&
+          todayInt >= secondPeriod.startDate! &&
+          todayInt <= secondPeriod.endDate!) {
+        if (firstPeriod.endDate == null ||
+            secondPeriod.startDate! > firstPeriod.endDate!) {
+          return secondPeriod;
+        }
+      }
+
+      if (secondPeriod.startDate != null && secondPeriod.endDate != null) {
+        return secondPeriod;
+      } else if (firstPeriod.startDate != null && firstPeriod.endDate != null) {
+        return secondPeriod;
+      }
+
+      return null;
+    } catch (e) {
+      print("Errore nel determinare il periodo corrente: $e");
+      return null;
+    }
+  }
+
   Future<void> close() async {
     final db = await database;
     await db.close();
-    _database = null; // Resetta la variabile statica
+    _database = null;
     print("Database chiuso.");
+  }
+
+  Future<bool> clearAllData() async {
+    final db = await database;
+    try {
+      await db.transaction((txn) async {
+        await txn.delete('grades');
+        await txn.delete('subject_list');
+        await txn.delete('periods');
+        // Reinserisci i periodi vuoti
+        await txn.execute('''
+        INSERT INTO periods (name, start_date, end_date)
+        VALUES 
+        ('first_period', NULL, NULL),
+        ('second_period', NULL, NULL)
+      ''');
+      });
+      return true;
+    } catch (e) {
+      print('Errore in clearAllData: $e');
+      return false;
+    }
   }
 }

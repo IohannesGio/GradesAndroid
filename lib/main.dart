@@ -8,6 +8,7 @@ import 'package:dynamic_color/dynamic_color.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'dart:io';
 import 'diary_page.dart';
+import 'package:file_selector/file_selector.dart';
 
 void main() {
   if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
@@ -2322,6 +2323,91 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
+  void _handleExportDatabase() async {
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Esportazione del database in corso...'),
+      ),
+    );
+
+    final result = await DatabaseHelper().exportDatabase();
+
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(result)),
+    );
+  }
+
+  void _handleImportDatabase() async {
+    try {
+      final XTypeGroup typeGroup = XTypeGroup(
+        label: 'Database SQLite',
+        extensions: ['sqlite3'],
+      );
+
+      final XFile? file = await openFile(acceptedTypeGroups: [typeGroup]);
+      if (file == null) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Importazione in corso...')),
+      );
+
+      final result = await DatabaseHelper().importDatabase(file.path);
+
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(result)),
+      );
+
+      // Ricarica i dati se l'importazione ha avuto successo
+      if (result.contains('successo')) {
+        _loadSettings();
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Errore durante l\'importazione: $e')),
+      );
+    }
+  }
+
+  void _handleClearData() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Conferma eliminazione'),
+        content: const Text(
+          'Sei sicuro di voler eliminare tutti i dati? Questa azione non può essere annullata.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Annulla'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              final success = await DatabaseHelper().clearAllData();
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(success
+                      ? 'Tutti i dati sono stati eliminati.'
+                      : 'Errore durante l\'eliminazione dei dati.'),
+                ),
+              );
+              if (success) {
+                _loadSettings();
+              }
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Elimina'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -2331,9 +2417,17 @@ class _SettingsPageState extends State<SettingsPage> {
         child: ListView(
           // Usa ListView per permettere lo scroll se necessario
           children: [
-            Text(
-              'Imposta Periodi',
-              style: Theme.of(context).textTheme.titleLarge,
+            // Blocco Periodi
+            Row(
+              children: [
+                Icon(Icons.calendar_month,
+                    color: Theme.of(context).colorScheme.primary),
+                const SizedBox(width: 8),
+                Text(
+                  'Imposta Periodi',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+              ],
             ),
             const SizedBox(height: 16),
 
@@ -2354,27 +2448,36 @@ class _SettingsPageState extends State<SettingsPage> {
                         _firstPeriodStart = newStart;
                         _firstPeriodEnd = newEnd;
                       });
-                      _savePeriods(); // Salva dopo la modifica
+                      _savePeriods();
                     },
                   );
                 },
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Row(
                     children: [
-                      Text(
-                        'Primo Quadrimestre',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Inizio: ${_firstPeriodStart != null ? _displayFormat.format(_firstPeriodStart!) : 'Non impostato'}',
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                      Text(
-                        'Fine: ${_firstPeriodEnd != null ? _displayFormat.format(_firstPeriodEnd!) : 'Non impostato'}',
-                        style: Theme.of(context).textTheme.bodyMedium,
+                      Icon(Icons.date_range, // Icona per il primo quadrimestre
+                          color: Theme.of(context).colorScheme.primary),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Primo Quadrimestre',
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Inizio: ${_firstPeriodStart != null ? _displayFormat.format(_firstPeriodStart!) : 'Non impostato'}',
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                            Text(
+                              'Fine: ${_firstPeriodEnd != null ? _displayFormat.format(_firstPeriodEnd!) : 'Non impostato'}',
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -2400,27 +2503,37 @@ class _SettingsPageState extends State<SettingsPage> {
                         _secondPeriodStart = newStart;
                         _secondPeriodEnd = newEnd;
                       });
-                      _savePeriods(); // Salva dopo la modifica
+                      _savePeriods();
                     },
                   );
                 },
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Row(
                     children: [
-                      Text(
-                        'Secondo Quadrimestre',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Inizio: ${_secondPeriodStart != null ? _displayFormat.format(_secondPeriodStart!) : 'Non impostato'}',
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                      Text(
-                        'Fine: ${_secondPeriodEnd != null ? _displayFormat.format(_secondPeriodEnd!) : 'Non impostato'}',
-                        style: Theme.of(context).textTheme.bodyMedium,
+                      Icon(
+                          Icons.date_range, // Icona per il secondo quadrimestre
+                          color: Theme.of(context).colorScheme.primary),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Secondo Quadrimestre',
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Inizio: ${_secondPeriodStart != null ? _displayFormat.format(_secondPeriodStart!) : 'Non impostato'}',
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                            Text(
+                              'Fine: ${_secondPeriodEnd != null ? _displayFormat.format(_secondPeriodEnd!) : 'Non impostato'}',
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -2430,10 +2543,16 @@ class _SettingsPageState extends State<SettingsPage> {
 
             const SizedBox(height: 24),
 
-            // Sezione Voti di Sufficienza e Massimo
-            Text(
-              'Imposta Voti di Sufficienza e Massimo',
-              style: Theme.of(context).textTheme.titleLarge,
+            // Blocco Voti
+            Row(
+              children: [
+                Icon(Icons.grade, color: Theme.of(context).colorScheme.primary),
+                const SizedBox(width: 8),
+                Text(
+                  'Imposta Voti di Sufficienza e Massimo',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+              ],
             ),
             const SizedBox(height: 16),
             // Blocco Voto di Sufficienza
@@ -2444,22 +2563,31 @@ class _SettingsPageState extends State<SettingsPage> {
               child: InkWell(
                 // Rendi la Card tappabile
                 borderRadius: BorderRadius.circular(12),
-                onTap:
-                    _showEditPassingGradeDialog, // Apri il dialogo di modifica voto di sufficienza
+                onTap: _showEditPassingGradeDialog,
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Row(
                     children: [
-                      Text(
-                        'Voto di Sufficienza',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        // Mostra il voto di sufficienza corrente
-                        _passingGrade.toString(),
-                        style: Theme.of(context).textTheme.bodyMedium,
+                      Icon(
+                          Icons
+                              .check_circle_outline, // Icona per il voto di sufficienza
+                          color: Theme.of(context).colorScheme.primary),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Voto di Sufficienza',
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              _passingGrade.toString(),
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -2475,22 +2603,29 @@ class _SettingsPageState extends State<SettingsPage> {
               child: InkWell(
                 // Rendi la Card tappabile
                 borderRadius: BorderRadius.circular(12),
-                onTap:
-                    _showEditMaxGradeDialog, // Apri il dialogo di modifica voto massimo
+                onTap: _showEditMaxGradeDialog,
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Row(
                     children: [
-                      Text(
-                        'Voto Massimo',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        // Mostra il voto massimo corrente
-                        _maxGrade.toString(),
-                        style: Theme.of(context).textTheme.bodyMedium,
+                      Icon(Icons.grade, // Icona per il voto massimo
+                          color: Theme.of(context).colorScheme.primary),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Voto Massimo',
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              _maxGrade.toString(),
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -2500,11 +2635,129 @@ class _SettingsPageState extends State<SettingsPage> {
 
             const SizedBox(height: 24),
 
-            // Il pulsante "Salva Periodi" esplicito non è più necessario
-            // FilledButton(
-            //   onPressed: _saveSettings, // Usa questa funzione per salvare tutto insieme
-            //   child: const Text('Salva Impostazioni'),
-            // ),
+            // Blocco Gestione Dati
+            Row(
+              children: [
+                Icon(Icons.data_usage,
+                    color: Theme.of(context).colorScheme.primary),
+                const SizedBox(width: 8),
+                Text(
+                  'Gestione Dati',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            // Blocco Esporta Database
+            Card(
+              elevation: 1,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(12),
+                onTap: _handleExportDatabase,
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Row(
+                    children: [
+                      Icon(Icons.backup, // Icona per l'esportazione
+                          color: Theme.of(context).colorScheme.primary),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Esporta Database',
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Salva una copia di backup del database',
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            // Blocco Importa Database
+            Card(
+              elevation: 1,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(12),
+                onTap: _handleImportDatabase,
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Row(
+                    children: [
+                      Icon(Icons.download, // Icona per l'importazione
+                          color: Theme.of(context).colorScheme.primary),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Importa Database',
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Carica un database esistente',
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            // Blocco Elimina Tutti i Dati
+            Card(
+              elevation: 1,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(12),
+                onTap: _handleClearData,
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Row(
+                    children: [
+                      Icon(Icons.delete_forever, // Icona per l'eliminazione
+                          color: Theme.of(context).colorScheme.error),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Elimina Tutti i Dati',
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Rimuovi tutti i dati dall\'app',
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
       ),
