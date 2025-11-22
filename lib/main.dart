@@ -9,6 +9,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'dart:io';
 import 'diary_page.dart';
 import 'package:file_selector/file_selector.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 void main() {
   if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
@@ -251,8 +252,12 @@ class _HomePageState extends State<HomePage> {
   void _navigateToSubjectDetails(String subjectName) async {
     await Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => SubjectDetailPage(subjectName: subjectName),
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            SubjectDetailPage(subjectName: subjectName)
+                .animate()
+                .fadeIn(duration: 300.ms)
+                .slideY(begin: 0.2, end: 0),
       ),
     );
     // Ricarica i dati quando si torna dalla pagina dei dettagli
@@ -430,7 +435,7 @@ class _HomePageState extends State<HomePage> {
                   ),
                 );
               },
-            ),
+            ).animate().fadeIn(delay: 50.ms).slideX(begin: 0.2, end: 0),
           ),
         ],
       ),
@@ -1199,7 +1204,7 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
                     );
                   },
                   // Rimosso separatorBuilder
-                ),
+                ).animate().fadeIn(delay: 50.ms).slideX(begin: 0.2, end: 0),
               ),
               // Sposta i pulsanti di modifica/eliminazione materia e aggiunta voto in basso
               Padding(
@@ -2423,15 +2428,11 @@ class _SettingsPageState extends State<SettingsPage> {
                 Icon(Icons.calendar_month,
                     color: Theme.of(context).colorScheme.primary),
                 const SizedBox(width: 8),
-                Text(
-                  'Imposta Periodi',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
+                Text('Periodi', style: Theme.of(context).textTheme.titleLarge),
               ],
-            ),
-            const SizedBox(height: 16),
+            ).animate().fadeIn(duration: 400.ms).slideX(begin: -0.2, end: 0),
 
-            // Blocco Primo Quadrimestre
+            // Card dei periodi
             Card(
               elevation: 1,
               shape: RoundedRectangleBorder(
@@ -2483,7 +2484,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   ),
                 ),
               ),
-            ),
+            ).animate().scale(delay: 200.ms).fadeIn(delay: 200.ms),
             const SizedBox(height: 16),
 
             // Blocco Secondo Quadrimestre
@@ -2539,7 +2540,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   ),
                 ),
               ),
-            ),
+            ).animate().scale(delay: 200.ms).fadeIn(delay: 200.ms),
 
             const SizedBox(height: 24),
 
@@ -2548,20 +2549,20 @@ class _SettingsPageState extends State<SettingsPage> {
               children: [
                 Icon(Icons.grade, color: Theme.of(context).colorScheme.primary),
                 const SizedBox(width: 8),
-                Text(
-                  'Imposta Voti di Sufficienza e Massimo',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
+                Text('Voti di Sufficienza e Massimo',
+                    style: Theme.of(context).textTheme.titleLarge),
               ],
-            ),
-            const SizedBox(height: 16),
-            // Blocco Voto di Sufficienza
+            )
+                .animate()
+                .fadeIn(delay: 300.ms, duration: 400.ms)
+                .slideX(begin: -0.2, end: 0),
+
+            // Card dei voti
             Card(
               elevation: 1,
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12)),
               child: InkWell(
-                // Rendi la Card tappabile
                 borderRadius: BorderRadius.circular(12),
                 onTap: _showEditPassingGradeDialog,
                 child: Padding(
@@ -2593,7 +2594,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   ),
                 ),
               ),
-            ),
+            ).animate().scale(delay: 400.ms).fadeIn(delay: 400.ms),
             const SizedBox(height: 16),
             // Blocco Voto Massimo
             Card(
@@ -2601,7 +2602,6 @@ class _SettingsPageState extends State<SettingsPage> {
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12)),
               child: InkWell(
-                // Rendi la Card tappabile
                 borderRadius: BorderRadius.circular(12),
                 onTap: _showEditMaxGradeDialog,
                 child: Padding(
@@ -2631,7 +2631,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   ),
                 ),
               ),
-            ),
+            ).animate().scale(delay: 400.ms).fadeIn(delay: 400.ms),
 
             const SizedBox(height: 24),
 
@@ -2641,14 +2641,15 @@ class _SettingsPageState extends State<SettingsPage> {
                 Icon(Icons.data_usage,
                     color: Theme.of(context).colorScheme.primary),
                 const SizedBox(width: 8),
-                Text(
-                  'Gestione Dati',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
+                Text('Gestione Dati',
+                    style: Theme.of(context).textTheme.titleLarge),
               ],
-            ),
-            const SizedBox(height: 16),
-            // Blocco Esporta Database
+            )
+                .animate()
+                .fadeIn(delay: 500.ms, duration: 400.ms)
+                .slideX(begin: -0.2, end: 0),
+
+            // Card della gestione dati
             Card(
               elevation: 1,
               shape: RoundedRectangleBorder(
@@ -2683,7 +2684,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   ),
                 ),
               ),
-            ),
+            ).animate().scale(delay: 600.ms).fadeIn(delay: 600.ms),
             const SizedBox(height: 16),
             // Blocco Importa Database
             Card(
@@ -2720,7 +2721,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   ),
                 ),
               ),
-            ),
+            ).animate().scale(delay: 600.ms).fadeIn(delay: 600.ms),
             const SizedBox(height: 16),
             // Blocco Elimina Tutti i Dati
             Card(
@@ -2757,7 +2758,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   ),
                 ),
               ),
-            ),
+            ).animate().scale(delay: 600.ms).fadeIn(delay: 600.ms),
           ],
         ),
       ),
