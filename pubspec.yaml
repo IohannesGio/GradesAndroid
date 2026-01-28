@@ -35,13 +35,13 @@ dependencies:
   path: ^1.9.0
   intl: ^0.20.2
   shared_preferences: ^2.0.0
-  fl_chart: ^0.71.0
+  fl_chart: ^1.1.1
   sqflite_common_ffi: ^2.3.0
   table_calendar: ^3.1.0
   share_plus: ^9.0.0
   file_selector: ^1.0.0
   flutter_animate: ^4.2.0
-
+  provider: ^6.0.0
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.6
@@ -105,3 +105,7 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/custom-fonts/#from-packages
+
+# Force vector_math to 2.2.0 to allow fl_chart upgrade
+dependency_overrides:
+  vector_math: ^2.2.0

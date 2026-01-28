@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'database_helper.dart'; // Importa il tuo database helper
+import '../database_helper.dart'; // Importa il tuo database helper
 import 'package:intl/intl.dart'; // Per la formattazione delle date/ore
 import 'package:table_calendar/table_calendar.dart'; // Importa la libreria del calendario
 
