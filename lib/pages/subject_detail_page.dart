@@ -71,23 +71,24 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
     // Calcola la media per il primo quadrimestre (sempre) usando returnAverageByPeriod
     int? firstPeriodStart;
     int? firstPeriodEnd;
-    final periods = await SettingsPage.loadPeriodsFromPreferences();
-    if (periods != null &&
-        periods.containsKey('first_period_start') &&
-        periods.containsKey('first_period_end')) {
-      try {
-        // Parsifica le date dal formato salvato (DD-MM-YYYY) e converti in intYYYYMMDD
-        final DateTime startDateTime =
-            DateFormat('dd-MM-yyyy').parse(periods['first_period_start']!);
-        firstPeriodStart =
-            int.parse(DateFormat('yyyyMMdd').format(startDateTime));
 
-        final DateTime endDateTime =
-            DateFormat('dd-MM-yyyy').parse(periods['first_period_end']!);
-        firstPeriodEnd = int.parse(DateFormat('yyyyMMdd').format(endDateTime));
-      } catch (e) {
-        print(
-            'Errore nel parsing delle date del primo periodo per il calcolo della media: $e');
+    final periods = await SettingsPage.loadPeriodsFromPreferences();
+    if (periods != null) {
+      if (periods.containsKey('first_period_start') &&
+          periods.containsKey('first_period_end')) {
+        try {
+          final DateTime startDateTime =
+              DateFormat('dd-MM-yyyy').parse(periods['first_period_start']!);
+          firstPeriodStart =
+              int.parse(DateFormat('yyyyMMdd').format(startDateTime));
+
+          final DateTime endDateTime =
+              DateFormat('dd-MM-yyyy').parse(periods['first_period_end']!);
+          firstPeriodEnd =
+              int.parse(DateFormat('yyyyMMdd').format(endDateTime));
+        } catch (e) {
+          print('Errore nel parsing delle date del primo periodo: $e');
+        }
       }
     }
 
@@ -101,10 +102,11 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
         .returnObjective(widget.subjectName); // Ottieni l'obiettivo
 
     setState(() {
-      _grades =
-          grades; // La lista dei voti mostrata è sempre completa e ordinata
+      _grades = grades;
       _averagePeriod = avgPeriod; // Media del periodo corrente
       _averageFirstPeriod = avg1; // Media del primo quadrimestre
+      _objective = obj; // Obiettivo
+
       _objective = obj; // Obiettivo
     });
   }
@@ -144,6 +146,9 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
         TextEditingController(text: existing?.weight.toString());
     // Imposta il tipo selezionato in base al voto esistente o al valore predefinito
     _selectedType = existing?.type ?? 'orale';
+
+    // Controller per la nota
+    final noteController = TextEditingController(text: existing?.note);
 
     // Resetta i messaggi di errore all'apertura del dialogo
     _gradeErrorText = null;
@@ -231,6 +236,11 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
                       }
                     },
                   ),
+                  TextField(
+                    controller: noteController,
+                    decoration:
+                        const InputDecoration(labelText: 'Nota (Opzionale)'),
+                  ),
                 ],
               ),
               actions: [
@@ -242,7 +252,10 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
                       gradeController.dispose();
                       _dateController.text =
                           ''; // Resetta solo il testo, non fare dispose qui
+                      _dateController.text =
+                          ''; // Resetta solo il testo, non fare dispose qui
                       weightController.dispose();
+                      noteController.dispose();
                       _selectedType = 'orale'; // Resetta al valore predefinito
                     },
                     child: const Text('Annulla')),
@@ -288,12 +301,14 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
                     }
 
                     final type = _selectedType; // Usa _selectedType
+                    final note = noteController.text;
 
                     if (!hasError) {
                       // Procedi solo se non ci sono errori
                       if (existing == null) {
                         await dbHelper.addGrade(widget.subjectName, grade!,
-                            dateForSaving!, weight!, type);
+                            dateForSaving!, weight!, type,
+                            note: note);
                       } else {
                         await dbHelper.editGrade({
                           'grade_id': existing.id,
@@ -302,7 +317,8 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
                           'date':
                               dateForSaving!, // Usa la data formattata per il salvataggio
                           'grade_weight': weight!,
-                          'type': type
+                          'type': type,
+                          'note': note
                         });
                       }
                       // Chiudi il dialogo passando true per indicare successo
@@ -721,9 +737,17 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
                             Text('(${g.type})'), // Tipo di voto accanto
                           ],
                         ),
-                        // Mostra la data formattata in DD-MM-YYYY nella ListTile
-                        subtitle: Text(
-                            'Data: ${formatIntDateToDisplay(g.date)} - Peso: ${g.weight}'), // Usa la helper function
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                                'Data: ${formatIntDateToDisplay(g.date)} - Peso: ${g.weight}'), // Usa la helper function
+                            if (g.note != null && g.note!.isNotEmpty)
+                              Text('Nota: ${g.note}',
+                                  style: const TextStyle(
+                                      fontStyle: FontStyle.italic)),
+                          ],
+                        ),
                         onTap: () => _showGradeDialog(existing: g),
                         trailing: IconButton(
                           icon: const Icon(Icons.delete),

@@ -797,6 +797,7 @@ class _SettingsPageState extends State<SettingsPage> {
             ).animate().scale(delay: 600.ms).fadeIn(delay: 600.ms),
             const SizedBox(height: 16),
             // Blocco Importa Database
+            // Pulsante Importa Database
             Card(
               elevation: 1,
               shape: RoundedRectangleBorder(
@@ -808,7 +809,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   padding: const EdgeInsets.all(16.0),
                   child: Row(
                     children: [
-                      Icon(Icons.download, // Icona per l'importazione
+                      Icon(Icons.file_upload,
                           color: Theme.of(context).colorScheme.primary),
                       const SizedBox(width: 16),
                       Expanded(
@@ -821,7 +822,7 @@ class _SettingsPageState extends State<SettingsPage> {
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              'Carica un database esistente',
+                              'Ripristina un backup precedente',
                               style: Theme.of(context).textTheme.bodyMedium,
                             ),
                           ],
@@ -831,9 +832,72 @@ class _SettingsPageState extends State<SettingsPage> {
                   ),
                 ),
               ),
-            ).animate().scale(delay: 600.ms).fadeIn(delay: 600.ms),
+            ).animate().scale(delay: 700.ms).fadeIn(delay: 700.ms),
             const SizedBox(height: 16),
-            // Blocco Elimina Tutti i Dati
+
+            // Pulsante Nuovo Anno Scolastico
+            Card(
+              elevation: 1,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(12),
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text('Nuovo Anno Scolastico'),
+                      content: const Text(
+                          'Questa azione archivierà l\'anno corrente (salvando un backup) e cancellerà tutti i voti, lezioni ed eventi per iniziare un nuovo anno pulito. Le materie e le impostazioni verranno mantenute. Vuoi procedere?'),
+                      actions: [
+                        TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('Annulla')),
+                        FilledButton(
+                            onPressed: () async {
+                              Navigator.pop(context);
+                              final result = await DatabaseHelper()
+                                  .archiveAndStartNewYear();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text(result)));
+                              _loadSettings(); // Ricarica impostazioni
+                            },
+                            child: const Text('Procedi')),
+                      ],
+                    ),
+                  );
+                },
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Row(
+                    children: [
+                      Icon(Icons.school, // Icona per nuovo anno
+                          color: Theme.of(context).colorScheme.primary),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Nuovo Anno Scolastico',
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Archivia l\'anno corrente e inizia da capo',
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ).animate().scale(delay: 800.ms).fadeIn(delay: 800.ms),
+            const SizedBox(height: 16),
+
+            // Pulsante Elimina Dati
             Card(
               elevation: 1,
               shape: RoundedRectangleBorder(
@@ -845,7 +909,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   padding: const EdgeInsets.all(16.0),
                   child: Row(
                     children: [
-                      Icon(Icons.delete_forever, // Icona per l'eliminazione
+                      Icon(Icons.delete_forever,
                           color: Theme.of(context).colorScheme.error),
                       const SizedBox(width: 16),
                       Expanded(
@@ -853,12 +917,15 @@ class _SettingsPageState extends State<SettingsPage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Elimina Tutti i Dati',
-                              style: Theme.of(context).textTheme.titleMedium,
+                              'Elimina Tutto',
+                              style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Theme.of(context).colorScheme.error),
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              'Rimuovi tutti i dati dall\'app',
+                              'Elimina tutti i dati (Attenzione!)',
                               style: Theme.of(context).textTheme.bodyMedium,
                             ),
                           ],
@@ -868,7 +935,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   ),
                 ),
               ),
-            ).animate().scale(delay: 600.ms).fadeIn(delay: 600.ms),
+            ).animate().scale(delay: 900.ms).fadeIn(delay: 900.ms),
           ],
         ),
       ),
