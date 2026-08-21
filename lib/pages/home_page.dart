@@ -3,8 +3,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 import '../database_helper.dart';
 import '../providers/education_mode_provider.dart';
+import '../widgets/smart_import_dialog.dart';
 import 'subject_detail_page.dart';
-import 'settings_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -388,9 +388,22 @@ class _HomePageState extends State<HomePage> {
             child: isUni
                 ? (_uniSubjects.isEmpty
                     ? Center(
-                        child: Text(
-                          'Nessun esame inserito nel libretto.',
-                          style: TextStyle(color: Theme.of(context).disabledColor),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.menu_book_outlined, size: 56, color: Theme.of(context).disabledColor),
+                            const SizedBox(height: 12),
+                            Text(
+                              'Nessun esame inserito nel libretto.',
+                              style: TextStyle(color: Theme.of(context).disabledColor),
+                            ),
+                            const SizedBox(height: 16),
+                            FilledButton.tonalIcon(
+                              onPressed: () => _showSmartImport(),
+                              icon: const Icon(Icons.auto_awesome, size: 18),
+                              label: const Text('Importa da Testo (IA)'),
+                            ),
+                          ],
                         ),
                       )
                     : ListView.builder(
@@ -544,12 +557,61 @@ class _HomePageState extends State<HomePage> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _showAddSubjectDialog,
-        icon: const Icon(Icons.add),
-        label: Text(isUni ? 'Nuovo Esame' : 'Nuova Materia'),
-        tooltip: isUni ? 'Aggiungi Nuovo Esame' : 'Aggiungi Nuova Materia',
-      ),
+      floatingActionButton: isUni
+          ? Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                FloatingActionButton.small(
+                  heroTag: 'smart_import_fab',
+                  onPressed: () => _showSmartImport(),
+                  tooltip: 'Importa da Testo (IA)',
+                  child: const Icon(Icons.auto_awesome, size: 20),
+                ),
+                const SizedBox(height: 10),
+                FloatingActionButton.extended(
+                  heroTag: 'add_exam_fab',
+                  onPressed: _showAddSubjectDialog,
+                  icon: const Icon(Icons.add),
+                  label: const Text('Nuovo Esame'),
+                  tooltip: 'Aggiungi Nuovo Esame',
+                ),
+              ],
+            )
+          : FloatingActionButton.extended(
+              onPressed: _showAddSubjectDialog,
+              icon: const Icon(Icons.add),
+              label: const Text('Nuova Materia'),
+              tooltip: 'Aggiungi Nuova Materia',
+            ),
     );
+  }
+
+  void _showSmartImport() async {
+    final result = await showSmartImportDialog(context);
+    if (result != null && result.selectedExams.isNotEmpty) {
+      int importedCount = 0;
+      int duplicateCount = 0;
+      for (final exam in result.selectedExams) {
+        try {
+          await dbHelper.addSubject(exam.title, cfu: exam.cfu);
+          importedCount++;
+        } catch (e) {
+          if (e.toString().contains('duplicate')) {
+            duplicateCount++;
+          }
+        }
+      }
+      _loadData();
+      if (mounted) {
+        String message = '$importedCount esami importati con successo!';
+        if (duplicateCount > 0) {
+          message += ' ($duplicateCount duplicati ignorati)';
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message)),
+        );
+      }
+    }
   }
 }

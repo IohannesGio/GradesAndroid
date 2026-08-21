@@ -519,123 +519,125 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
             ],
 
-            const SizedBox(height: 24),
+            if (!isUni) ...[
+              const SizedBox(height: 24),
 
-            // --- SECTION 2: PERIODI / SEMESTRI ---
-            Row(
-              children: [
-                Icon(Icons.calendar_month,
-                    color: Theme.of(context).colorScheme.primary),
-                const SizedBox(width: 8),
-                Text(isUni ? 'Semestri' : 'Periodi / Quadrimestri',
-                    style: Theme.of(context).textTheme.titleLarge),
-              ],
-            ).animate().fadeIn(delay: 150.ms, duration: 400.ms).slideX(begin: -0.2, end: 0),
+              // --- SECTION 2: PERIODI / QUADRIMESTRI ---
+              Row(
+                children: [
+                  Icon(Icons.calendar_month,
+                      color: Theme.of(context).colorScheme.primary),
+                  const SizedBox(width: 8),
+                  Text('Periodi / Quadrimestri',
+                      style: Theme.of(context).textTheme.titleLarge),
+                ],
+              ).animate().fadeIn(delay: 150.ms, duration: 400.ms).slideX(begin: -0.2, end: 0),
 
-            const SizedBox(height: 8),
+              const SizedBox(height: 8),
 
-            Card(
-              elevation: 1,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(12),
-                onTap: () {
-                  _showEditPeriodDialog(
-                    isUni ? 'Primo Semestre' : 'Primo Quadrimestre',
-                    _firstPeriodStart,
-                    _firstPeriodEnd,
-                    (newStart, newEnd) {
-                      setState(() {
-                        _firstPeriodStart = newStart;
-                        _firstPeriodEnd = newEnd;
-                      });
-                      _savePeriods();
-                    },
-                  );
-                },
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Row(
-                    children: [
-                      Icon(Icons.date_range, color: Theme.of(context).colorScheme.primary),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              isUni ? 'Primo Semestre' : 'Primo Quadrimestre',
-                              style: Theme.of(context).textTheme.titleMedium,
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Inizio: ${_firstPeriodStart != null ? _displayFormat.format(_firstPeriodStart!) : 'Non impostato'}',
-                              style: Theme.of(context).textTheme.bodyMedium,
-                            ),
-                            Text(
-                              'Fine: ${_firstPeriodEnd != null ? _displayFormat.format(_firstPeriodEnd!) : 'Non impostato'}',
-                              style: Theme.of(context).textTheme.bodyMedium,
-                            ),
-                          ],
+              Card(
+                elevation: 1,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: () {
+                    _showEditPeriodDialog(
+                      'Primo Quadrimestre',
+                      _firstPeriodStart,
+                      _firstPeriodEnd,
+                      (newStart, newEnd) {
+                        setState(() {
+                          _firstPeriodStart = newStart;
+                          _firstPeriodEnd = newEnd;
+                        });
+                        _savePeriods();
+                      },
+                    );
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Row(
+                      children: [
+                        Icon(Icons.date_range, color: Theme.of(context).colorScheme.primary),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Primo Quadrimestre',
+                                style: Theme.of(context).textTheme.titleMedium,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Inizio: ${_firstPeriodStart != null ? _displayFormat.format(_firstPeriodStart!) : 'Non impostato'}',
+                                style: Theme.of(context).textTheme.bodyMedium,
+                              ),
+                              Text(
+                                'Fine: ${_firstPeriodEnd != null ? _displayFormat.format(_firstPeriodEnd!) : 'Non impostato'}',
+                                style: Theme.of(context).textTheme.bodyMedium,
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-            const SizedBox(height: 12),
+              const SizedBox(height: 12),
 
-            Card(
-              elevation: 1,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(12),
-                onTap: () {
-                  _showEditPeriodDialog(
-                    isUni ? 'Secondo Semestre' : 'Secondo Quadrimestre',
-                    _secondPeriodStart,
-                    _secondPeriodEnd,
-                    (newStart, newEnd) {
-                      setState(() {
-                        _secondPeriodStart = newStart;
-                        _secondPeriodEnd = newEnd;
-                      });
-                      _savePeriods();
-                    },
-                  );
-                },
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Row(
-                    children: [
-                      Icon(Icons.date_range, color: Theme.of(context).colorScheme.primary),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              isUni ? 'Secondo Semestre' : 'Secondo Quadrimestre',
-                              style: Theme.of(context).textTheme.titleMedium,
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Inizio: ${_secondPeriodStart != null ? _displayFormat.format(_secondPeriodStart!) : 'Non impostato'}',
-                              style: Theme.of(context).textTheme.bodyMedium,
-                            ),
-                            Text(
-                              'Fine: ${_secondPeriodEnd != null ? _displayFormat.format(_secondPeriodEnd!) : 'Non impostato'}',
-                              style: Theme.of(context).textTheme.bodyMedium,
-                            ),
-                          ],
+              Card(
+                elevation: 1,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: () {
+                    _showEditPeriodDialog(
+                      'Secondo Quadrimestre',
+                      _secondPeriodStart,
+                      _secondPeriodEnd,
+                      (newStart, newEnd) {
+                        setState(() {
+                          _secondPeriodStart = newStart;
+                          _secondPeriodEnd = newEnd;
+                        });
+                        _savePeriods();
+                      },
+                    );
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Row(
+                      children: [
+                        Icon(Icons.date_range, color: Theme.of(context).colorScheme.primary),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Secondo Quadrimestre',
+                                style: Theme.of(context).textTheme.titleMedium,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Inizio: ${_secondPeriodStart != null ? _displayFormat.format(_secondPeriodStart!) : 'Non impostato'}',
+                                style: Theme.of(context).textTheme.bodyMedium,
+                              ),
+                              Text(
+                                'Fine: ${_secondPeriodEnd != null ? _displayFormat.format(_secondPeriodEnd!) : 'Non impostato'}',
+                                style: Theme.of(context).textTheme.bodyMedium,
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
+            ],
 
             const SizedBox(height: 24),
 

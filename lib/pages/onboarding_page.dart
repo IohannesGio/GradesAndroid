@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 import '../providers/education_mode_provider.dart';
 import '../database_helper.dart';
+import '../widgets/smart_import_dialog.dart';
 
 class OnboardingPage extends StatefulWidget {
   const OnboardingPage({super.key});
@@ -636,6 +637,28 @@ class _OnboardingPageState extends State<OnboardingPage> {
               ),
             ],
           ),
+
+          const SizedBox(height: 16),
+
+          if (isUni)
+            FilledButton.tonalIcon(
+              onPressed: () async {
+                final result = await showSmartImportDialog(context);
+                if (result != null && result.selectedExams.isNotEmpty) {
+                  setState(() {
+                    for (final exam in result.selectedExams) {
+                      _initialSubjects.add(exam.title);
+                    }
+                  });
+                }
+              },
+              icon: const Icon(Icons.auto_awesome, size: 18),
+              label: const Text('Importa da Testo (IA)'),
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+            ).animate().fadeIn(delay: 150.ms),
 
           const SizedBox(height: 16),
 
