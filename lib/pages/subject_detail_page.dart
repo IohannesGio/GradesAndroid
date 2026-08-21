@@ -165,11 +165,13 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
 
                     if (!isIdoneita) ...[
                       const SizedBox(height: 12),
-                      Text('Voto Esame: ${gradeVal == 30.0 && isLode ? "30 e Lode" : gradeVal.toInt()}',
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: Theme.of(context).colorScheme.primary,
-                              )),
+                      Text(
+                        'Voto Esame: ${gradeVal == 30.0 && isLode ? "30 e Lode" : gradeVal.toInt()}',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                      ),
                       const SizedBox(height: 4),
                       Slider(
                         value: gradeVal,
@@ -646,7 +648,8 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
     );
   }
 
-  /// Vista Università: Scheda Singola Verbalizzazio  Widget _buildUniversityView() {
+  /// Vista Università: Scheda Singola Verbalizzazione Esame
+  Widget _buildUniversityView() {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
