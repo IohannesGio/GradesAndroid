@@ -6,7 +6,6 @@ import 'package:provider/provider.dart';
 import '../database_helper.dart';
 import '../providers/education_mode_provider.dart';
 import '../utils/grade_colors.dart';
-import '../utils/date_utils.dart';
 import 'settings_page.dart';
 
 class StatisticsPage extends StatefulWidget {
@@ -51,12 +50,11 @@ class _StatisticsPageState extends State<StatisticsPage> {
 
   Future<void> _loadInitialData() async {
     final settings = await SettingsPage.loadPassingAndMaxGrades();
-    if (mounted) {
-      setState(() {
-        _passingGrade = settings['passing_grade'] ?? 6.0;
-        _maxGrade = settings['max_grade'] ?? 10.0;
-      });
-    }
+    if (!mounted) return;
+    setState(() {
+      _passingGrade = settings['passing_grade'] ?? 6.0;
+      _maxGrade = settings['max_grade'] ?? 10.0;
+    });
 
     final modeProvider = Provider.of<EducationModeProvider>(context, listen: false);
     if (modeProvider.isUniversity) {
@@ -256,7 +254,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    Widget _statChip(String label, String value, Color color) {
+    Widget buildStatChip(String label, String value, Color color) {
       return Expanded(
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
@@ -287,14 +285,14 @@ class _StatisticsPageState extends State<StatisticsPage> {
         padding: const EdgeInsets.all(16),
         child: Row(
           children: [
-            _statChip('Media\nPonderata', _weightedAverage, colorScheme.primary),
+            buildStatChip('Media\nPonderata', _weightedAverage, colorScheme.primary),
             const SizedBox(width: 8),
-            _statChip(
+            buildStatChip(
                 'CFU\nAcquisiti',
                 '$_acquiredCfu / $_totalPlannedCfu',
                 Colors.green),
             const SizedBox(width: 8),
-            _statChip('Previsione\nLaurea', _degreePrediction, Colors.orange),
+            buildStatChip('Previsione\nLaurea', _degreePrediction, Colors.orange),
           ],
         ),
       ),
@@ -311,7 +309,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
 
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final pGrade = modeProvider.passingGrade;
+    final pGrade = _passingGrade;
 
     return Column(
       children: _uniSubjects.asMap().entries.map((entry) {
@@ -662,7 +660,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
     final maxPoints = max(firstOrig.length, secondOrig.length);
     final double maxX = (maxPoints > 0 ? maxPoints - 1 : 0).toDouble();
 
-    LineChartBarData _line(List<FlSpot> spots, Color color) {
+    LineChartBarData buildLine(List<FlSpot> spots, Color color) {
       return LineChartBarData(
         spots: spots,
         isCurved: true,
@@ -716,10 +714,10 @@ class _StatisticsPageState extends State<StatisticsPage> {
             minY: minY,
             maxY: maxY,
             lineBarsData: [
-              _line(firstOrigSpots, Colors.blueAccent),
-              _line(firstRoundSpots, Colors.purpleAccent),
-              _line(secondOrigSpots, Colors.orangeAccent),
-              _line(secondRoundSpots, Colors.pinkAccent),
+              buildLine(firstOrigSpots, Colors.blueAccent),
+              buildLine(firstRoundSpots, Colors.purpleAccent),
+              buildLine(secondOrigSpots, Colors.orangeAccent),
+              buildLine(secondRoundSpots, Colors.pinkAccent),
             ],
           ),
         ),
