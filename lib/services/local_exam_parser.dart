@@ -12,28 +12,41 @@ class ParsedExamItem {
 
 class LocalExamParser {
   /// Analizza il testo copiato da una pagina web universitaria ed estrae la lista degli esami e i relativi CFU.
-  /// Supporta formati tabulari (es. Sapienza, Esse3, Gomp, Cineca), elenchi ed espressioni formattate.
+  /// Supporta formati tabulari (es. Sapienza, Esse3, Gomp, Cineca), elenchi monolinea e multilinea con lookahead.
   static List<ParsedExamItem> parseText(String rawText) {
     if (rawText.trim().isEmpty) return [];
 
     final List<ParsedExamItem> results = [];
     final Set<String> addedTitles = {};
 
-    final lines = rawText.split(RegExp(r'[\r\n]+'));
+    final rawLines = rawText
+        .split(RegExp(r'[\r\n]+'))
+        .map((l) => l.trim())
+        .where((l) => l.isNotEmpty)
+        .toList();
 
-    for (var line in lines) {
-      final cleanedLine = line.trim();
-      if (cleanedLine.isEmpty || _isHeaderOrFooter(cleanedLine)) continue;
+    for (int i = 0; i < rawLines.length; i++) {
+      final line = rawLines[i];
+      if (_isHeaderOrFooter(line)) continue;
 
-      // Prova strategie di parsing in ordine di specificità:
-      
-      // 1. Tabular / Sapienza / Esse3 format (es. "100938 | CHIMICA GENERALE [CHIM/03] [ITA]\t1º\t1º\t6")
-      ParsedExamItem? item = _parseTabularLine(cleanedLine);
+      // 1. Parsing riga singola (tabulare o con CFU sulla stessa riga)
+      ParsedExamItem? item = _parseTabularLine(line);
+      item ??= _parseStandardLine(line);
 
-      // 2. Fallback: Standard line parsing
-      item ??= _parseStandardLine(cleanedLine);
+      // 2. Se l'esame è valido ma ha il CFU di default o non trovato, effettua lookahead sulle righe adiacenti
+      if (item != null) {
+        final cfuOnLine = _extractCfu(line);
+        if (cfuOnLine == null) {
+          int? lookaheadCfu = _findCfuInSubsequentLines(rawLines, i);
+          if (lookaheadCfu != null) {
+            item.cfu = lookaheadCfu;
+          }
+        }
+      }
 
-      if (item != null && item.title.length >= 3 && !addedTitles.contains(item.title.toUpperCase())) {
+      if (item != null &&
+          item.title.length >= 3 &&
+          !addedTitles.contains(item.title.toUpperCase())) {
         addedTitles.add(item.title.toUpperCase());
         results.add(item);
       }
@@ -42,19 +55,31 @@ class LocalExamParser {
     return results;
   }
 
+  /// Cerca i CFU nelle 4 righe immediatamente successive quando il testo è incollato in colonne multilinea
+  static int? _findCfuInSubsequentLines(List<String> lines, int currentIndex) {
+    for (int offset = 1; offset <= 4; offset++) {
+      if (currentIndex + offset >= lines.length) break;
+      final nextLine = lines[currentIndex + offset];
+
+      // Se la riga successiva è un nuovo inizio esame (es. codice o pipe "|"), stop
+      if (nextLine.contains('|') || _isHeaderOrFooter(nextLine)) break;
+
+      final cfu = _extractCfu(nextLine);
+      if (cfu != null) return cfu;
+    }
+    return null;
+  }
+
   /// Parser specifico per tabelle universitarie (es. Sapienza, Esse3, Gomp)
   static ParsedExamItem? _parseTabularLine(String line) {
     final parts = line.split('\t').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
 
-    // Se ci sono colonne (con tab) oppure c'è il pipe "|"
     if (parts.length >= 2 || line.contains('|')) {
       final firstCol = parts.first;
 
-      // Estrai il nome dal primo campo
-      String title = _cleanTitleFromCodeAndBracket(firstCol);
-      if (title.length < 3 || _isHeaderOrFooter(title)) return null;
+      String? title = _extractTitle(firstCol);
+      if (title == null || title.length < 3 || _isHeaderOrFooter(title)) return null;
 
-      // Trova CFU: controlla l'ultima colonna, poi la riga intera
       int? cfu;
       if (parts.length >= 2) {
         final lastCol = parts.last;
@@ -108,20 +133,19 @@ class LocalExamParser {
     return false;
   }
 
-  /// Pulisce codici insegnamento (es. "100938 | ", "AAF1102 | ") e staffe con SSD o Lingua (es. "[CHIM/03] [ITA]")
   static String _cleanTitleFromCodeAndBracket(String text) {
     String cleaned = text;
 
-    // Rimuovi codice prima del pipe (es. "100938 | " o "AAF1102 | ")
-    cleaned = cleaned.replaceAll(RegExp(r'^[A-Z0-9_]{3,12}\s*\|\s*'), '');
+    // 1. Rimuovi codice prima del pipe (es. "100938 | " o "AAF1102 | ")
+    cleaned = cleaned.replaceAll(RegExp(r'^[A-Z0-9_\-]{2,15}\s*\|\s*'), '');
 
-    // Rimuovi tutto ciò che c'è tra parentesi quadre [CHIM/03], [ITA], [N/D], [BIO/13, BIO/18]
+    // 2. Rimuovi tutto ciò che c'è tra parentesi quadre [CHIM/03], [ITA], [N/D], [BIO/13, BIO/18]
     cleaned = cleaned.replaceAll(RegExp(r'\[[^\]]*\]'), '');
 
-    // Rimuovi codici insegnamento senza pipe all'inizio
-    cleaned = cleaned.replaceAll(RegExp(r'^(?:[A-Z0-9]{4,10}|[A-Z]{2,4}\/[0-9]{2})\s*[\:\-\–\—\s]\s*'), '');
+    // 3. Rimuovi codici insegnamento che contengono almeno una cifra (es. "01ABC - ", "MAT/05 - ", "1047699 - ")
+    cleaned = cleaned.replaceAll(RegExp(r'^(?:(?=.*\d)[A-Z0-9]{4,12}|[A-Z]{2,4}\/[0-9]{2})\s*[\:\-\–\—]\s*'), '');
 
-    // Rimuovi punteggiatura residua
+    // 4. Rimuovi punteggiatura residua
     cleaned = cleaned.replaceAll(RegExp(r'^[\s\:\-\–\—\,\.\;\*\|]+|[\s\:\-\–\—\,\.\;\*\|]+$'), '').trim();
 
     return cleaned;
@@ -160,7 +184,7 @@ class LocalExamParser {
       if (val != null && val > 0 && val <= 30) return val;
     }
 
-    // 5. Se la riga termina semplicemente con un numero di CFU isolato (es. "... 1º 1º 6")
+    // 5. Se la riga termina con indicazione anno/semestre/CFU (es. "... 1º 1º 6")
     final RegExp trailingNumPattern = RegExp(r'\b(\d{1,2})\s*$');
     final trailingMatch = trailingNumPattern.firstMatch(text);
     if (trailingMatch != null) {
@@ -182,10 +206,16 @@ class LocalExamParser {
     // Rimuovi note tra parentesi irrilevanti
     cleaned = cleaned.replaceAll(RegExp(r'[\(\[\{][^\)\]\}]*(?:ssd|anno|semestre|obbligatorio|opzionale|propedeutico)[^\)\]\}]*[\)\]\}]', caseSensitive: false), '');
 
-    // Rimuovi parole chiave di disturbo
+    // Rimuovi indicazioni di anno/semestre come "1º 1º 6" o "1° 2° 12"
+    cleaned = cleaned.replaceAll(RegExp(r'\b(?:\d[º°]\s*)+', caseSensitive: false), '');
+
+    // Rimuovi parole chiave di disturbo ed SSD
     cleaned = cleaned.replaceAll(RegExp(r'\b(?:SSD|MAT\/\d+|INF\/\d+|ING\-INF\/\d+|GEO\/\d+|FIS\/\d+|BIO\/\d+|MED\/\d+|CHIM\/\d+)\b', caseSensitive: false), '');
-    cleaned = cleaned.replaceAll(RegExp(r'\b(?:anno\s*\d|primo\s*anno|secondo\s*anno|terzo\s*anno|semestre\s*\d|\dº\s*|\d°\s*)\b', caseSensitive: false), '');
+    cleaned = cleaned.replaceAll(RegExp(r'\b(?:anno\s*\d|primo\s*anno|secondo\s*anno|terzo\s*anno|semestre\s*\d)\b', caseSensitive: false), '');
     cleaned = cleaned.replaceAll(RegExp(r'\b(?:obbligatorio|opzionale|corso|insegnamento)\b', caseSensitive: false), '');
+
+    // Rimuovi sequenze di numeri isolati alla fine della riga (che erano anno/semestre/cfu)
+    cleaned = cleaned.replaceAll(RegExp(r'(?:\s+\d{1,2})+\s*$'), '');
 
     // Pulizia punteggiatura residua ai bordi
     cleaned = cleaned.replaceAll(RegExp(r'^[\s\:\-\–\—\,\.\;\*\|]+|[\s\:\-\–\—\,\.\;\*\|]+$'), '').trim();
