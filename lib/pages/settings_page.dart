@@ -478,7 +478,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       ),
                       const SizedBox(height: 8),
                       DropdownButtonFormField<String>(
-                        value: modeProvider.lodeRule,
+                        initialValue: modeProvider.lodeRule,
                         decoration: InputDecoration(
                           labelText: 'Calcolo della Lode',
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
