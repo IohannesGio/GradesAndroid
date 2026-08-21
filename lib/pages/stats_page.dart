@@ -15,7 +15,7 @@ class StatisticsPage extends StatefulWidget {
   State<StatisticsPage> createState() => _StatisticsPageState();
 }
 
-class _StatisticsPageState extends State<StatisticsPage> with WidgetsBindingObserver {
+class _StatisticsPageState extends State<StatisticsPage> {
   final dbHelper = DatabaseHelper();
 
   // — Scuola
@@ -42,26 +42,6 @@ class _StatisticsPageState extends State<StatisticsPage> with WidgetsBindingObse
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
-    _loadInitialData();
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    super.dispose();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      _loadInitialData();
-    }
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
     _loadInitialData();
   }
 
