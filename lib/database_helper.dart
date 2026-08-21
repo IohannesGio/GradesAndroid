@@ -107,6 +107,15 @@ class Grade {
     return DateTime(1970);
   }
 
+  /// Indica se il voto è una semplice Idoneità / Approvato (senza voto numerico)
+  bool get isIdoneita {
+    final lowerNote = note?.toLowerCase() ?? '';
+    return lowerNote.contains('idoneit') ||
+        lowerNote.contains('idoneita') ||
+        lowerNote.contains('approvato') ||
+        lowerNote.contains('pass');
+  }
+
   @override
   String toString() {
     return 'Grade{id: $id, subjectName: $subjectName, grade: $grade, date: $date, weight: $weight, type: $type}';
@@ -1746,7 +1755,8 @@ class DatabaseHelper {
           double subjectAvgSum = 0.0;
           double subjectWeightSum = 0.0;
           for (var g in grades) {
-            if (g.weight > 0) {
+            // Le Idoneità NON sono voti numerici e vengono escluse dal calcolo della media ponderata
+            if (g.weight > 0 && !g.isIdoneita) {
               double gradeValue = g.grade;
               if (gradeValue >= 30 && (g.note?.toLowerCase().contains('lode') ?? false)) {
                 gradeValue = lodeNumericValue;
@@ -1780,7 +1790,8 @@ class DatabaseHelper {
 
       for (var s in subjects) {
         final grades = await listGrades(s.subjectName);
-        if (grades.any((g) => g.grade >= 18)) {
+        // Le Idoneità o i voti >= 18 confermano il superamento dell'esame e l'acquisizione dei CFU!
+        if (grades.any((g) => g.isIdoneita || g.grade >= 18)) {
           acquiredCfu += s.cfu;
         }
       }
@@ -1831,7 +1842,8 @@ class DatabaseHelper {
       final List<Map<String, dynamic>> maps = await db.query('grades');
       for (var map in maps) {
         final grade = Grade.fromMap(map);
-        if (grade.grade >= 18) {
+        // Le Idoneità NON sono voti numerici e vengono escluse dal grafico di distribuzione voti
+        if (!grade.isIdoneita && grade.grade >= 18) {
           final isLode = grade.grade >= 30 && (grade.note?.toLowerCase().contains('lode') ?? false);
           if (isLode) {
             distribution['30L'] = (distribution['30L'] ?? 0) + 1;

@@ -121,16 +121,27 @@ class _HomePageState extends State<HomePage> {
     for (var s in fullSubjects) {
       final grades = await dbHelper.listGrades(s.subjectName);
       if (grades.isNotEmpty) {
-        double sum = 0;
-        double wSum = 0;
-        for (var g in grades) {
-          sum += g.grade * g.weight;
-          wSum += g.weight;
-        }
-        if (wSum > 0) {
-          averagesMap[s.subjectName] = (sum / wSum).toStringAsFixed(1);
+        // Se l'esame è un'Idoneità, non mostrare un voto numerico
+        final hasIdoneita = grades.any((g) => g.isIdoneita);
+        if (hasIdoneita) {
+          averagesMap[s.subjectName] = 'Idon.';
         } else {
-          averagesMap[s.subjectName] = 'N/A';
+          double sum = 0;
+          double wSum = 0;
+          for (var g in grades) {
+            final isLode = g.grade >= 30 &&
+                (g.note?.toLowerCase().contains('lode') ?? false);
+            final gradeValue = isLode
+                ? modeProvider.getLodeNumericValue()
+                : g.grade;
+            sum += gradeValue * g.weight;
+            wSum += g.weight;
+          }
+          if (wSum > 0) {
+            averagesMap[s.subjectName] = (sum / wSum).toStringAsFixed(1);
+          } else {
+            averagesMap[s.subjectName] = 'N/A';
+          }
         }
       } else {
         averagesMap[s.subjectName] = 'N/A';
@@ -312,6 +323,7 @@ class _HomePageState extends State<HomePage> {
     final isUni = modeProvider.isUniversity;
 
     Color getColorForValue(String value) {
+      if (value == 'Idon.') return Colors.blue.withOpacity(0.15);
       double? val = double.tryParse(value);
       if (val == null) return Colors.grey.withOpacity(0.2);
       return val >= _passingGrade
@@ -320,6 +332,7 @@ class _HomePageState extends State<HomePage> {
     }
 
     Color getTextColorForBackground(String value) {
+      if (value == 'Idon.') return Colors.blue;
       double? val = double.tryParse(value);
       if (val == null) return Colors.grey;
       return val >= _passingGrade ? Colors.green : Colors.red;
