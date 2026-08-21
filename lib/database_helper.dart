@@ -14,14 +14,24 @@ class Subject {
   final int? id;
   final String subjectName;
   final double? objective;
+  final int cfu;
+  final String status;
 
-  Subject({this.id, required this.subjectName, this.objective});
+  Subject({
+    this.id,
+    required this.subjectName,
+    this.objective,
+    this.cfu = 6,
+    this.status = 'planned',
+  });
 
   Map<String, dynamic> toMap() {
     return {
       'id': id,
       'subject': subjectName.toUpperCase(),
       'objective': objective,
+      'cfu': cfu,
+      'status': status,
     };
   }
 
@@ -30,12 +40,14 @@ class Subject {
       id: map['id'] as int?,
       subjectName: map['subject'] as String,
       objective: map['objective'] as double?,
+      cfu: (map['cfu'] as int?) ?? 6,
+      status: (map['status'] as String?) ?? 'planned',
     );
   }
 
   @override
   String toString() {
-    return 'Subject{id: $id, subjectName: $subjectName, objective: $objective}';
+    return 'Subject{id: $id, subjectName: $subjectName, objective: $objective, cfu: $cfu, status: $status}';
   }
 }
 
@@ -257,7 +269,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -268,7 +280,9 @@ class DatabaseHelper {
       CREATE TABLE IF NOT EXISTS subject_list (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         subject TEXT UNIQUE,
-        objective REAL
+        objective REAL,
+        cfu INTEGER DEFAULT 6,
+        status TEXT DEFAULT 'planned'
       )
     ''');
     await db.execute('''
@@ -278,7 +292,8 @@ class DatabaseHelper {
         grade REAL,
         date INTEGER,
         weight REAL,
-        type TEXT
+        type TEXT,
+        note TEXT
       )
     ''');
     await db.execute('''
@@ -325,7 +340,17 @@ class DatabaseHelper {
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
-      await db.execute('ALTER TABLE grades ADD COLUMN note TEXT');
+      try {
+        await db.execute('ALTER TABLE grades ADD COLUMN note TEXT');
+      } catch (_) {}
+    }
+    if (oldVersion < 3) {
+      try {
+        await db.execute('ALTER TABLE subject_list ADD COLUMN cfu INTEGER DEFAULT 6');
+      } catch (_) {}
+      try {
+        await db.execute("ALTER TABLE subject_list ADD COLUMN status TEXT DEFAULT 'planned'");
+      } catch (_) {}
     }
   }
 
@@ -1562,12 +1587,16 @@ class DatabaseHelper {
 
   // ---------- CREATE FUNCTIONS ----------
 
-  Future<bool> addSubject(String subject) async {
+  Future<bool> addSubject(String subject, {int cfu = 6, String status = 'planned'}) async {
     final db = await database;
     try {
       await db.insert(
         'subject_list',
-        {'subject': subject.toUpperCase()},
+        {
+          'subject': subject.toUpperCase(),
+          'cfu': cfu,
+          'status': status,
+        },
         conflictAlgorithm: ConflictAlgorithm.fail,
       );
       return true;
@@ -1582,6 +1611,135 @@ class DatabaseHelper {
       print('Errore generico in addSubject: $e');
       return false;
     }
+  }
+
+  Future<bool> updateSubjectCfu(String subject, int cfu) async {
+    final db = await database;
+    try {
+      await db.update(
+        'subject_list',
+        {'cfu': cfu},
+        where: 'subject = ?',
+        whereArgs: [subject.toUpperCase()],
+      );
+      return true;
+    } catch (e) {
+      print('Errore in updateSubjectCfu: $e');
+      return false;
+    }
+  }
+
+  Future<bool> updateSubjectStatus(String subject, String status) async {
+    final db = await database;
+    try {
+      await db.update(
+        'subject_list',
+        {'status': status},
+        where: 'subject = ?',
+        whereArgs: [subject.toUpperCase()],
+      );
+      return true;
+    } catch (e) {
+      print('Errore in updateSubjectStatus: $e');
+      return false;
+    }
+  }
+
+  Future<List<Subject>> listSubjectsFull() async {
+    final db = await database;
+    try {
+      final List<Map<String, dynamic>> maps = await db.query('subject_list');
+      return maps.map((m) => Subject.fromMap(m)).toList();
+    } catch (e) {
+      print('Errore in listSubjectsFull: $e');
+      return [];
+    }
+  }
+
+  Future<Subject?> getSubjectDetails(String subjectName) async {
+    final db = await database;
+    try {
+      final List<Map<String, dynamic>> maps = await db.query(
+        'subject_list',
+        where: 'subject = ?',
+        whereArgs: [subjectName.toUpperCase()],
+      );
+      if (maps.isNotEmpty) {
+        return Subject.fromMap(maps.first);
+      }
+      return null;
+    } catch (e) {
+      print('Errore in getSubjectDetails: $e');
+      return null;
+    }
+  }
+
+  /// Calcola la Media Ponderata per l'Università (Voto * CFU / CFU totali superati)
+  Future<String> returnWeightedAverage() async {
+    final db = await database;
+    try {
+      final subjects = await listSubjectsFull();
+      if (subjects.isEmpty) return 'N/A';
+
+      double totalWeightedSum = 0.0;
+      int totalCfuEvaluated = 0;
+
+      for (var s in subjects) {
+        final grades = await listGrades(s.subjectName);
+        if (grades.isNotEmpty) {
+          // Calcola la media dei voti della materia
+          double subjectAvgSum = 0.0;
+          double subjectWeightSum = 0.0;
+          for (var g in grades) {
+            if (g.weight > 0) {
+              subjectAvgSum += g.grade * g.weight;
+              subjectWeightSum += g.weight;
+            }
+          }
+          if (subjectWeightSum > 0) {
+            double subjectAverage = subjectAvgSum / subjectWeightSum;
+            totalWeightedSum += subjectAverage * s.cfu;
+            totalCfuEvaluated += s.cfu;
+          }
+        }
+      }
+
+      if (totalCfuEvaluated == 0) return 'N/A';
+      double weightedAverage = totalWeightedSum / totalCfuEvaluated;
+      return weightedAverage.toStringAsFixed(2);
+    } catch (e) {
+      print('Errore in returnWeightedAverage: $e');
+      return 'N/A';
+    }
+  }
+
+  /// Calcola il totale dei CFU conseguiti (materie che hanno almeno un voto di sufficienza >= 18)
+  Future<int> returnAcquiredCfu() async {
+    try {
+      final subjects = await listSubjectsFull();
+      int acquiredCfu = 0;
+
+      for (var s in subjects) {
+        final grades = await listGrades(s.subjectName);
+        if (grades.any((g) => g.grade >= 18)) {
+          acquiredCfu += s.cfu;
+        }
+      }
+      return acquiredCfu;
+    } catch (e) {
+      print('Errore in returnAcquiredCfu: $e');
+      return 0;
+    }
+  }
+
+  /// Calcola la proiezione del voto di laurea (base 110)
+  Future<String> returnDegreePrediction() async {
+    final weightedAvgStr = await returnWeightedAverage();
+    final double? weightedAvg = double.tryParse(weightedAvgStr);
+    if (weightedAvg == null) return 'N/A';
+
+    double degreeBase = (weightedAvg * 110) / 30;
+    return degreeBase.toStringAsFixed(2);
   }
 
   Future<bool> addGrade(

@@ -6,8 +6,10 @@ import '../database_helper.dart';
 import 'settings_page.dart';
 
 class StatisticsPage extends StatefulWidget {
+  const StatisticsPage({super.key});
+
   @override
-  _StatisticsPageState createState() => _StatisticsPageState();
+  State<StatisticsPage> createState() => _StatisticsPageState();
 }
 
 class _StatisticsPageState extends State<StatisticsPage> {
