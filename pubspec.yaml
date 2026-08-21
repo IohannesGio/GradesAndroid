@@ -30,17 +30,20 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
   sqflite: ^2.3.3+1
   path_provider: ^2.1.3
   path: ^1.9.0
   intl: ^0.20.2
   shared_preferences: ^2.0.0
-  fl_chart: ^0.71.0
+  fl_chart: ^1.1.1
   sqflite_common_ffi: ^2.3.0
   table_calendar: ^3.1.0
   share_plus: ^9.0.0
   file_selector: ^1.0.0
-
+  flutter_animate: ^4.2.0
+  provider: ^6.0.0
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.6
@@ -63,6 +66,19 @@ dev_dependencies:
 
 flutter_launcher_icons:
   android: true
+  ios: false
+  windows:
+    generate: true
+    image_path: "assets/icon/app_icon.png"
+    icon_size: 48
+  macos:
+    generate: true
+    image_path: "assets/icon/app_icon.png"
+  web:
+    generate: true
+    image_path: "assets/icon/app_icon.png"
+    background_color: "#FFFFFF"
+    theme_color: "#FFFFFF"
   image_path: "assets/icon/app_icon.png"
   adaptive_icon_background: "#FFFFFF"
   adaptive_icon_foreground: "assets/icon/app_icon.png"
@@ -104,3 +120,7 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/custom-fonts/#from-packages
+
+# Force vector_math to 2.2.0 to allow fl_chart upgrade
+dependency_overrides:
+  vector_math: ^2.2.0

@@ -46,3 +46,5 @@ app.*.map.json
 devtools_options.yaml
 macos/Flutter/ephemeral/
 ios/Flutter/
+/test
+.gitignore

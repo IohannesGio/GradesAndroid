@@ -14,14 +14,24 @@ class Subject {
   final int? id;
   final String subjectName;
   final double? objective;
+  final int cfu;
+  final String status;
 
-  Subject({this.id, required this.subjectName, this.objective});
+  Subject({
+    this.id,
+    required this.subjectName,
+    this.objective,
+    this.cfu = 6,
+    this.status = 'planned',
+  });
 
   Map<String, dynamic> toMap() {
     return {
       'id': id,
       'subject': subjectName.toUpperCase(),
       'objective': objective,
+      'cfu': cfu,
+      'status': status,
     };
   }
 
@@ -30,12 +40,14 @@ class Subject {
       id: map['id'] as int?,
       subjectName: map['subject'] as String,
       objective: map['objective'] as double?,
+      cfu: (map['cfu'] as int?) ?? 6,
+      status: (map['status'] as String?) ?? 'planned',
     );
   }
 
   @override
   String toString() {
-    return 'Subject{id: $id, subjectName: $subjectName, objective: $objective}';
+    return 'Subject{id: $id, subjectName: $subjectName, objective: $objective, cfu: $cfu, status: $status}';
   }
 }
 
@@ -46,6 +58,7 @@ class Grade {
   final int date;
   final double weight;
   final String type;
+  final String? note;
 
   Grade({
     this.id,
@@ -54,6 +67,7 @@ class Grade {
     required this.date,
     required this.weight,
     required this.type,
+    this.note,
   });
 
   Map<String, dynamic> toMap() {
@@ -64,6 +78,7 @@ class Grade {
       'date': date,
       'weight': weight,
       'type': type,
+      'note': note,
     };
   }
 
@@ -75,6 +90,7 @@ class Grade {
       date: map['date'] as int,
       weight: map['weight'] as double,
       type: map['type'] as String,
+      note: map['note'] as String?,
     );
   }
 
@@ -89,6 +105,23 @@ class Grade {
       }
     }
     return DateTime(1970);
+  }
+
+  /// Indica se il voto è una semplice Idoneità / Approvato (senza voto numerico)
+  bool get isIdoneita {
+    final lowerNote = note?.toLowerCase() ?? '';
+    return lowerNote.contains('idoneit') ||
+        lowerNote.contains('idoneita') ||
+        lowerNote.contains('approvato') ||
+        lowerNote.contains('pass');
+  }
+
+  /// Indica se il voto è "30 e Lode" — la nota è salvata come '30L' o '30L - ...' 
+  /// oppure (legacy) contiene 'lode'
+  bool get isLode {
+    if (grade < 30) return false;
+    final lowerNote = note?.toLowerCase() ?? '';
+    return lowerNote.contains('30l') || lowerNote.contains('lode');
   }
 
   @override
@@ -238,24 +271,97 @@ class DatabaseHelper {
   factory DatabaseHelper() => _instance;
   DatabaseHelper._internal();
 
-  static Database? _database;
-  static const String _dbName = "grades.sqlite3"; // Nome file DB
+  static Database? _schoolDatabase;
+  static Database? _universityDatabase;
 
+  static const String _schoolDbName = "grades_school.sqlite3";
+  static const String _universityDbName = "grades_university.sqlite3";
+  static const String _legacyDbName = "grades.sqlite3";
+
+  /// Restituisce la connessione database attiva in base alla modalità selezionata (Scuola o Università).
   Future<Database> get database async {
-    if (_database != null) return _database!;
-    _database = await _initDatabase();
-    return _database!;
+    final prefs = await SharedPreferences.getInstance();
+    final modeStr = prefs.getString('education_mode') ?? 'school';
+    final isUni = modeStr == 'university';
+
+    if (isUni) {
+      if (_universityDatabase != null && _universityDatabase!.isOpen) {
+        return _universityDatabase!;
+      }
+      _universityDatabase = await _initDatabaseForName(_universityDbName);
+      return _universityDatabase!;
+    } else {
+      if (_schoolDatabase != null && _schoolDatabase!.isOpen) {
+        return _schoolDatabase!;
+      }
+      _schoolDatabase = await _initDatabaseForName(_schoolDbName);
+      return _schoolDatabase!;
+    }
   }
 
-  Future<Database> _initDatabase() async {
-    Directory documentsDirectory = await getApplicationDocumentsDirectory();
-    String path = join(documentsDirectory.path, _dbName);
+  Future<void> resetConnections() async {
+    if (_schoolDatabase != null && _schoolDatabase!.isOpen) {
+      await _schoolDatabase!.close();
+      _schoolDatabase = null;
+    }
+    if (_universityDatabase != null && _universityDatabase!.isOpen) {
+      await _universityDatabase!.close();
+      _universityDatabase = null;
+    }
+  }
 
-    return await openDatabase(
+  Future<Database> _initDatabaseForName(String dbName) async {
+    Directory documentsDirectory = await getApplicationDocumentsDirectory();
+    String path = join(documentsDirectory.path, dbName);
+    String legacyPath = join(documentsDirectory.path, _legacyDbName);
+
+    // Se il nuovo file DB non esiste ma esiste il vecchio file legacy 'grades.sqlite3', copialo come punto di partenza
+    final targetFile = File(path);
+    final legacyFile = File(legacyPath);
+
+    if (!await targetFile.exists() && await legacyFile.exists()) {
+      try {
+        await legacyFile.copy(path);
+        print('Migrati i dati dal vecchio database $_legacyDbName a $dbName');
+      } catch (e) {
+        print('Errore durante la migrazione del file DB legacy: $e');
+      }
+    }
+
+    final db = await openDatabase(
       path,
-      version: 1,
+      version: 4,
       onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
     );
+    await _ensureSchemaUpToDate(db);
+    return db;
+  }
+
+  Future<void> _ensureSchemaUpToDate(Database db) async {
+    try {
+      final gradesInfo = await db.rawQuery('PRAGMA table_info(grades)');
+      bool hasNote = gradesInfo.any((column) => column['name'] == 'note');
+      if (!hasNote) {
+        await db.execute('ALTER TABLE grades ADD COLUMN note TEXT');
+      }
+    } catch (e) {
+      print('Schema migration error for grades note column: $e');
+    }
+
+    try {
+      final subjectInfo = await db.rawQuery('PRAGMA table_info(subject_list)');
+      bool hasCfu = subjectInfo.any((column) => column['name'] == 'cfu');
+      if (!hasCfu) {
+        await db.execute('ALTER TABLE subject_list ADD COLUMN cfu INTEGER DEFAULT 6');
+      }
+      bool hasStatus = subjectInfo.any((column) => column['name'] == 'status');
+      if (!hasStatus) {
+        await db.execute("ALTER TABLE subject_list ADD COLUMN status TEXT DEFAULT 'planned'");
+      }
+    } catch (e) {
+      print('Schema migration error for subject_list columns: $e');
+    }
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -263,7 +369,9 @@ class DatabaseHelper {
       CREATE TABLE IF NOT EXISTS subject_list (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         subject TEXT UNIQUE,
-        objective REAL
+        objective REAL,
+        cfu INTEGER DEFAULT 6,
+        status TEXT DEFAULT 'planned'
       )
     ''');
     await db.execute('''
@@ -273,7 +381,8 @@ class DatabaseHelper {
         grade REAL,
         date INTEGER,
         weight REAL,
-        type TEXT
+        type TEXT,
+        note TEXT
       )
     ''');
     await db.execute('''
@@ -316,6 +425,10 @@ class DatabaseHelper {
       ('first_period', NULL, NULL),
       ('second_period', NULL, NULL)
     ''');
+  }
+
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    await _ensureSchemaUpToDate(db);
   }
 
   // ---------- GET FUNCTIONS ----------
@@ -373,10 +486,7 @@ class DatabaseHelper {
         return "Errore: file non trovato.";
       }
 
-      if (_database != null) {
-        await _database!.close();
-        _database = null;
-      }
+      await resetConnections();
 
       await sourceFile.copy(dbPath);
       return "Database importato con successo!";
@@ -1058,7 +1168,6 @@ class DatabaseHelper {
   }
 
   Future<String> returnAverageByPeriodBis(String subject) async {
-    final db = await database;
     try {
       final currentPeriod = await _getCurrentPeriodDates();
       if (currentPeriod == null) {
@@ -1273,6 +1382,7 @@ class DatabaseHelper {
         'date': data['date'],
         'weight': data['grade_weight'],
         'type': data['type'],
+        'note': data['note'],
       };
       values.removeWhere((key, value) => value == null);
 
@@ -1551,12 +1661,16 @@ class DatabaseHelper {
 
   // ---------- CREATE FUNCTIONS ----------
 
-  Future<bool> addSubject(String subject) async {
+  Future<bool> addSubject(String subject, {int cfu = 6, String status = 'planned'}) async {
     final db = await database;
     try {
       await db.insert(
         'subject_list',
-        {'subject': subject.toUpperCase()},
+        {
+          'subject': subject.toUpperCase(),
+          'cfu': cfu,
+          'status': status,
+        },
         conflictAlgorithm: ConflictAlgorithm.fail,
       );
       return true;
@@ -1573,8 +1687,228 @@ class DatabaseHelper {
     }
   }
 
-  Future<bool> addGrade(String subjectName, double grade, int date,
-      double weight, String type) async {
+  Future<bool> updateSubjectCfu(String subject, int cfu) async {
+    final db = await database;
+    try {
+      await db.update(
+        'subject_list',
+        {'cfu': cfu},
+        where: 'subject = ?',
+        whereArgs: [subject.toUpperCase()],
+      );
+      return true;
+    } catch (e) {
+      print('Errore in updateSubjectCfu: $e');
+      return false;
+    }
+  }
+
+  Future<bool> updateSubjectStatus(String subject, String status) async {
+    final db = await database;
+    try {
+      await db.update(
+        'subject_list',
+        {'status': status},
+        where: 'subject = ?',
+        whereArgs: [subject.toUpperCase()],
+      );
+      return true;
+    } catch (e) {
+      print('Errore in updateSubjectStatus: $e');
+      return false;
+    }
+  }
+
+  Future<List<Subject>> listSubjectsFull() async {
+    final db = await database;
+    try {
+      final List<Map<String, dynamic>> maps = await db.query('subject_list');
+      return maps.map((m) => Subject.fromMap(m)).toList();
+    } catch (e) {
+      print('Errore in listSubjectsFull: $e');
+      return [];
+    }
+  }
+
+  Future<Subject?> getSubjectDetails(String subjectName) async {
+    final db = await database;
+    try {
+      final List<Map<String, dynamic>> maps = await db.query(
+        'subject_list',
+        where: 'subject = ?',
+        whereArgs: [subjectName.toUpperCase()],
+      );
+      if (maps.isNotEmpty) {
+        return Subject.fromMap(maps.first);
+      }
+      return null;
+    } catch (e) {
+      print('Errore in getSubjectDetails: $e');
+      return null;
+    }
+  }
+
+  /// Calcola la Media Ponderata per l'Università (Voto * CFU / CFU totali superati)
+  Future<String> returnWeightedAverage({double lodeNumericValue = 30.0}) async {
+    try {
+      final subjects = await listSubjectsFull();
+      if (subjects.isEmpty) return 'N/A';
+
+      double totalWeightedSum = 0.0;
+      int totalCfuEvaluated = 0;
+
+      for (var s in subjects) {
+        final grades = await listGrades(s.subjectName);
+        if (grades.isNotEmpty) {
+          double subjectAvgSum = 0.0;
+          double subjectWeightSum = 0.0;
+          for (var g in grades) {
+            // Le Idoneità NON sono voti numerici e vengono escluse dal calcolo della media ponderata
+            if (g.weight > 0 && !g.isIdoneita) {
+              double gradeValue = g.grade;
+              if (g.isLode) {
+                gradeValue = lodeNumericValue;
+              }
+              subjectAvgSum += gradeValue * g.weight;
+              subjectWeightSum += g.weight;
+            }
+          }
+          if (subjectWeightSum > 0) {
+            double subjectAverage = subjectAvgSum / subjectWeightSum;
+            totalWeightedSum += subjectAverage * s.cfu;
+            totalCfuEvaluated += s.cfu;
+          }
+        }
+      }
+
+      if (totalCfuEvaluated == 0) return 'N/A';
+      double weightedAverage = totalWeightedSum / totalCfuEvaluated;
+      return weightedAverage.toStringAsFixed(2);
+    } catch (e) {
+      print('Errore in returnWeightedAverage: $e');
+      return 'N/A';
+    }
+  }
+
+  /// Calcola la Media Aritmetica per l'Università (Somma voti / N. esami verbalizzati con voto numerico)
+  Future<String> returnArithmeticAverage({double lodeNumericValue = 30.0}) async {
+    try {
+      final db = await database;
+      final maps = await db.query('grades');
+      double totalSum = 0.0;
+      int count = 0;
+
+      for (var map in maps) {
+        final g = Grade.fromMap(map);
+        if (g.weight > 0 && !g.isIdoneita && g.grade >= 18) {
+          final val = g.isLode ? lodeNumericValue : g.grade;
+          totalSum += val;
+          count++;
+        }
+      }
+
+      if (count == 0) return 'N/A';
+      return (totalSum / count).toStringAsFixed(2);
+    } catch (e) {
+      print('Errore in returnArithmeticAverage: $e');
+      return 'N/A';
+    }
+  }
+
+  /// Calcola il totale dei CFU conseguiti (materie che hanno almeno un voto di sufficienza >= 18)
+  Future<int> returnAcquiredCfu() async {
+    try {
+      final subjects = await listSubjectsFull();
+      int acquiredCfu = 0;
+
+      for (var s in subjects) {
+        final grades = await listGrades(s.subjectName);
+        // Le Idoneità o i voti >= 18 confermano il superamento dell'esame e l'acquisizione dei CFU!
+        if (grades.any((g) => g.isIdoneita || g.grade >= 18)) {
+          acquiredCfu += s.cfu;
+        }
+      }
+      return acquiredCfu;
+    } catch (e) {
+      print('Errore in returnAcquiredCfu: $e');
+      return 0;
+    }
+  }
+
+  /// Calcola la proiezione del voto di laurea (base 110 + punti bonus lode)
+  Future<String> returnDegreePrediction({
+    double lodeNumericValue = 30.0,
+    double lodeDegreeBonus = 0.0,
+  }) async {
+    final weightedAvgStr = await returnWeightedAverage(lodeNumericValue: lodeNumericValue);
+    final double? weightedAvg = double.tryParse(weightedAvgStr);
+    if (weightedAvg == null) return 'N/A';
+
+    double degreeBase = (weightedAvg * 110) / 30;
+
+    if (lodeDegreeBonus > 0) {
+      final subjects = await listSubjectsFull();
+      int lodeCount = 0;
+      for (var s in subjects) {
+        final grades = await listGrades(s.subjectName);
+        for (var g in grades) {
+          if (g.isLode) {
+            lodeCount++;
+          }
+        }
+      }
+      degreeBase += lodeCount * lodeDegreeBonus;
+    }
+
+    return degreeBase.toStringAsFixed(2);
+  }
+
+  /// Restituisce tutti i voti ordinati per data (per calcolare l'andamento della media)
+  Future<List<Grade>> getAllGradesSortedByDate() async {
+    final db = await database;
+    try {
+      final maps = await db.query('grades', orderBy: 'date ASC');
+      return maps.map((m) => Grade.fromMap(m)).toList();
+    } catch (e) {
+      print('Errore in getAllGradesSortedByDate: $e');
+      return [];
+    }
+  }
+
+  /// Restituisce la distribuzione dei voti da 18 a 30L per l'Università
+  Future<Map<String, int>> getUniversityGradeDistribution() async {
+    final db = await database;
+    Map<String, int> distribution = {
+      for (var i = 18; i <= 30; i++) '$i': 0,
+      '30L': 0,
+    };
+
+    try {
+      final List<Map<String, dynamic>> maps = await db.query('grades');
+      for (var map in maps) {
+        final grade = Grade.fromMap(map);
+        // Le Idoneità NON sono voti numerici e vengono escluse dal grafico di distribuzione voti
+        if (!grade.isIdoneita && grade.grade >= 18) {
+          if (grade.isLode) {
+            distribution['30L'] = (distribution['30L'] ?? 0) + 1;
+          } else {
+            final key = grade.grade.floor().toString();
+            if (distribution.containsKey(key)) {
+              distribution[key] = (distribution[key] ?? 0) + 1;
+            }
+          }
+        }
+      }
+      return distribution;
+    } catch (e) {
+      print('Errore in getUniversityGradeDistribution: $e');
+      return distribution;
+    }
+  }
+
+  Future<bool> addGrade(
+      String subjectName, double grade, int date, double weight, String type,
+      {String? note}) async {
     final db = await database;
     try {
       final gradeObj = Grade(
@@ -1582,7 +1916,8 @@ class DatabaseHelper {
           grade: grade,
           date: date,
           weight: weight,
-          type: type);
+          type: type,
+          note: note);
       await db.insert(
         'grades',
         gradeObj.toMap()..remove('id'),
@@ -1590,8 +1925,26 @@ class DatabaseHelper {
       );
       return true;
     } catch (e) {
-      print('Errore in addGrade: $e');
-      return false;
+      print('Errore in addGrade, eseguiamo verifica schema: $e');
+      await _ensureSchemaUpToDate(db);
+      try {
+        final gradeObj = Grade(
+            subjectName: subjectName.toUpperCase(),
+            grade: grade,
+            date: date,
+            weight: weight,
+            type: type,
+            note: note);
+        await db.insert(
+          'grades',
+          gradeObj.toMap()..remove('id'),
+          conflictAlgorithm: ConflictAlgorithm.ignore,
+        );
+        return true;
+      } catch (retryError) {
+        print('Errore definitivo in addGrade: $retryError');
+        return false;
+      }
     }
   }
 
@@ -1626,6 +1979,305 @@ class DatabaseHelper {
     } catch (e) {
       print('Errore in addCalendarEvent: $e');
       return false;
+    }
+  }
+
+  // ---------- GRADE TYPE ANALYSIS FUNCTIONS ----------
+
+  /// Restituisce la media per tipologia di voto (scritto, orale, pratico, ecc.) per una materia
+  Future<Map<String, double>> getAveragesByType(String subject, {double lodeNumericValue = 30.0}) async {
+    final db = await database;
+    try {
+      final List<Map<String, dynamic>> maps = await db.query(
+        'grades',
+        where: 'subject_name = ?',
+        whereArgs: [subject.toUpperCase()],
+      );
+
+      Map<String, double> typeSum = {};
+      Map<String, double> typeWeightSum = {};
+
+      for (var map in maps) {
+        final g = Grade.fromMap(map);
+        if (g.weight > 0 && !g.isIdoneita) {
+          final normType = g.type.trim();
+          if (normType.isEmpty) continue;
+          double gradeVal = g.isLode ? lodeNumericValue : g.grade;
+          typeSum[normType] = (typeSum[normType] ?? 0.0) + (gradeVal * g.weight);
+          typeWeightSum[normType] = (typeWeightSum[normType] ?? 0.0) + g.weight;
+        }
+      }
+
+      Map<String, double> averages = {};
+      for (var type in typeSum.keys) {
+        final wSum = typeWeightSum[type] ?? 0.0;
+        if (wSum > 0) {
+          averages[type] = typeSum[type]! / wSum;
+        }
+      }
+      return averages;
+    } catch (e) {
+      print('Errore in getAveragesByType: $e');
+      return {};
+    }
+  }
+
+  /// Restituisce la media per tipologia di voto per tutte le materie
+  Future<Map<String, double>> getOverallAveragesByType({double lodeNumericValue = 30.0}) async {
+    final db = await database;
+    try {
+      final List<Map<String, dynamic>> maps = await db.query('grades');
+
+      Map<String, double> typeSum = {};
+      Map<String, double> typeWeightSum = {};
+
+      for (var map in maps) {
+        final g = Grade.fromMap(map);
+        if (g.weight > 0 && !g.isIdoneita) {
+          final normType = g.type.trim();
+          if (normType.isEmpty) continue;
+          double gradeVal = g.isLode ? lodeNumericValue : g.grade;
+          typeSum[normType] = (typeSum[normType] ?? 0.0) + (gradeVal * g.weight);
+          typeWeightSum[normType] = (typeWeightSum[normType] ?? 0.0) + g.weight;
+        }
+      }
+
+      Map<String, double> averages = {};
+      for (var type in typeSum.keys) {
+        final wSum = typeWeightSum[type] ?? 0.0;
+        if (wSum > 0) {
+          averages[type] = typeSum[type]! / wSum;
+        }
+      }
+      return averages;
+    } catch (e) {
+      print('Errore in getOverallAveragesByType: $e');
+      return {};
+    }
+  }
+
+  /// Restituisce il conteggio di voti per tipologia
+  Future<Map<String, int>> getGradeCountByType(String? subject) async {
+    final db = await database;
+    try {
+      final List<Map<String, dynamic>> maps = subject != null
+          ? await db.query('grades', where: 'subject_name = ?', whereArgs: [subject.toUpperCase()])
+          : await db.query('grades');
+
+      Map<String, int> counts = {};
+      for (var map in maps) {
+        final g = Grade.fromMap(map);
+        final normType = g.type.trim();
+        if (normType.isNotEmpty) {
+          counts[normType] = (counts[normType] ?? 0) + 1;
+        }
+      }
+      return counts;
+    } catch (e) {
+      print('Errore in getGradeCountByType: $e');
+      return {};
+    }
+  }
+
+  // ---------- ACHIEVEMENT FUNCTIONS ----------
+
+  /// Restituisce gli achievement dell'utente
+  Future<Map<String, dynamic>> getAchievements() async {
+    final db = await database;
+    Map<String, dynamic> achievements = {
+      'total_grades': 0,
+      'perfect_scores': 0, // Voti massimi (10 o max_grade)
+      'above_eight': 0, // Voti >= 8
+      'subjects_with_objective': 0, // Materie con obiettivo raggiunto
+      'best_subject': null,
+      'best_average': 0.0,
+      'current_streak': 0, // Giorni consecutivi con voti
+      'highest_improvement': null, // Materia con maggior miglioramento
+    };
+
+    try {
+      // Carica max_grade dalle impostazioni
+      final prefs = await SharedPreferences.getInstance();
+      final maxGrade = prefs.getDouble('max_grade') ?? 10.0;
+
+      // Totale voti
+      final totalResult =
+          await db.rawQuery('SELECT COUNT(*) as count FROM grades');
+      achievements['total_grades'] = totalResult.first['count'] as int;
+
+      // Voti perfetti
+      final perfectResult = await db.rawQuery(
+          'SELECT COUNT(*) as count FROM grades WHERE grade >= ?', [maxGrade]);
+      achievements['perfect_scores'] = perfectResult.first['count'] as int;
+
+      // Voti sopra 8
+      final aboveEightResult = await db
+          .rawQuery('SELECT COUNT(*) as count FROM grades WHERE grade >= 8.0');
+      achievements['above_eight'] = aboveEightResult.first['count'] as int;
+
+      // Materie con obiettivo raggiunto
+      final objectivesResult = await objectiveAchievementByPeriod();
+      final reachedCount = (objectivesResult.$2['completely reached'] ?? 0) +
+          (objectivesResult.$2['reached'] ?? 0);
+      achievements['subjects_with_objective'] = reachedCount;
+
+      // Materia migliore
+      final bestSubjectResult = await db.rawQuery('''
+        SELECT subject_name, SUM(grade * weight) / SUM(weight) AS average_grade
+        FROM grades
+        GROUP BY subject_name
+        ORDER BY average_grade DESC
+        LIMIT 1
+      ''');
+      if (bestSubjectResult.isNotEmpty &&
+          bestSubjectResult.first['average_grade'] != null) {
+        achievements['best_subject'] =
+            bestSubjectResult.first['subject_name'] as String;
+        achievements['best_average'] =
+            bestSubjectResult.first['average_grade'] as double;
+      }
+
+      // Calcola streak (giorni consecutivi con almeno un voto)
+      final streakResult = await _calculateStreak();
+      achievements['current_streak'] = streakResult;
+
+      return achievements;
+    } catch (e) {
+      print('Errore in getAchievements: $e');
+      return achievements;
+    }
+  }
+
+  /// Calcola lo streak di giorni consecutivi con voti
+  Future<int> _calculateStreak() async {
+    final db = await database;
+
+    try {
+      final result = await db.rawQuery('''
+        SELECT DISTINCT date
+        FROM grades
+        ORDER BY date DESC
+      ''');
+
+      if (result.isEmpty) return 0;
+
+      int streak = 0;
+      DateTime? lastDate;
+
+      for (var row in result) {
+        final dateInt = row['date'] as int;
+        final dateStr = dateInt.toString();
+        if (dateStr.length == 8) {
+          final date = DateTime.parse(
+              '${dateStr.substring(0, 4)}-${dateStr.substring(4, 6)}-${dateStr.substring(6, 8)}');
+
+          if (lastDate == null) {
+            // Primo giorno
+            final today = DateTime.now();
+            final diff = today.difference(date).inDays;
+            if (diff > 1)
+              break; // Lo streak è rotto se l'ultimo voto non è oggi o ieri
+            streak = 1;
+            lastDate = date;
+          } else {
+            // Controlla se è consecutivo
+            final diff = lastDate.difference(date).inDays;
+            if (diff == 1) {
+              streak++;
+              lastDate = date;
+            } else {
+              break; // Lo streak è rotto
+            }
+          }
+        }
+      }
+
+      return streak;
+    } catch (e) {
+      print('Errore in _calculateStreak: $e');
+      return 0;
+    }
+  }
+
+  // ---------- CALENDAR FUNCTIONS ----------
+
+  /// Restituisce tutti i voti con le loro date per il calendario
+  Future<List<Grade>> getGradesForCalendar(
+      {DateTime? startDate, DateTime? endDate}) async {
+    final db = await database;
+
+    try {
+      String query = 'SELECT * FROM grades';
+      List<dynamic> args = [];
+
+      if (startDate != null && endDate != null) {
+        final startInt = int.parse(DateFormat('yyyyMMdd').format(startDate));
+        final endInt = int.parse(DateFormat('yyyyMMdd').format(endDate));
+        query += ' WHERE date BETWEEN ? AND ?';
+        args = [startInt, endInt];
+      }
+
+      query += ' ORDER BY date DESC';
+
+      final result = await db.rawQuery(query, args);
+      return result.map((map) => Grade.fromMap(map)).toList();
+    } catch (e) {
+      print('Errore in getGradesForCalendar: $e');
+      return [];
+    }
+  }
+
+  /// Restituisce i voti per una specifica data
+  Future<List<Grade>> getGradesForDate(DateTime date) async {
+    final db = await database;
+    final dateInt = int.parse(DateFormat('yyyyMMdd').format(date));
+
+    try {
+      final result = await db.query(
+        'grades',
+        where: 'date = ?',
+        whereArgs: [dateInt],
+        orderBy: 'subject_name ASC',
+      );
+      return result.map((map) => Grade.fromMap(map)).toList();
+    } catch (e) {
+      print('Errore in getGradesForDate: $e');
+      return [];
+    }
+  }
+
+  /// Restituisce un riepilogo mensile dei voti
+  Future<Map<int, List<Grade>>> getGradesByMonth(int year, int month) async {
+    final db = await database;
+
+    try {
+      final startDate = DateTime(year, month, 1);
+      final endDate = DateTime(year, month + 1, 0); // Ultimo giorno del mese
+
+      final startInt = int.parse(DateFormat('yyyyMMdd').format(startDate));
+      final endInt = int.parse(DateFormat('yyyyMMdd').format(endDate));
+
+      final result = await db.query(
+        'grades',
+        where: 'date BETWEEN ? AND ?',
+        whereArgs: [startInt, endInt],
+        orderBy: 'date ASC',
+      );
+
+      Map<int, List<Grade>> gradesByDay = {};
+      for (var map in result) {
+        final grade = Grade.fromMap(map);
+        final day = grade.dateTime.day;
+        if (!gradesByDay.containsKey(day)) {
+          gradesByDay[day] = [];
+        }
+        gradesByDay[day]!.add(grade);
+      }
+
+      return gradesByDay;
+    } catch (e) {
+      print('Errore in getGradesByMonth: $e');
+      return {};
     }
   }
 
@@ -1748,22 +2400,62 @@ class DatabaseHelper {
   }
 
   Future<void> close() async {
-    final db = await database;
-    await db.close();
-    _database = null;
+    await resetConnections();
     print("Database chiuso.");
   }
 
-  Future<bool> clearAllData() async {
+  Future<String> archiveAndStartNewYear() async {
+    final db = await database;
+    try {
+      final timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
+      final backupName = 'grades_archive_$timestamp.sqlite3';
+
+      final currentDbPath = await getDatabasePath();
+      final dbFolder = await getApplicationDocumentsDirectory();
+      final archiveFolder = Directory(join(dbFolder.path, 'archives'));
+      if (!await archiveFolder.exists()) {
+        await archiveFolder.create(recursive: true);
+      }
+      final backupPath = join(archiveFolder.path, backupName);
+      await File(currentDbPath).copy(backupPath);
+
+      // 2. Cancella i dati dell'anno corrente
+      await db.transaction((txn) async {
+        await txn.delete('grades');
+        await txn.delete('timetable');
+
+        try {
+          await txn.delete('calendar_events');
+        } catch (e) {}
+
+        await txn.update('periods', {'start_date': null, 'end_date': null});
+      });
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('first_period_start');
+      await prefs.remove('first_period_end');
+      await prefs.remove('second_period_start');
+      await prefs.remove('second_period_end');
+
+      return 'Anno archiviato con successo! Backup salvato in: $backupName';
+    } catch (e) {
+      print('Errore durante l\'archiviazione: $e');
+      return 'Errore durante l\'archiviazione: $e';
+    }
+  }
+
+  /// Pulisce solo i dati del database della modalità attualmente attiva
+  Future<bool> clearCurrentModeData() async {
     final db = await database;
     try {
       await db.transaction((txn) async {
         await txn.delete('grades');
         await txn.delete('subject_list');
-        await txn.delete('periods');
-        // Reinserisci i periodi vuoti
+        try { await txn.delete('periods'); } catch (_) {}
+        try { await txn.delete('timetable'); } catch (_) {}
+        try { await txn.delete('calendar_events'); } catch (_) {}
         await txn.execute('''
-        INSERT INTO periods (name, start_date, end_date)
+        INSERT OR IGNORE INTO periods (name, start_date, end_date)
         VALUES 
         ('first_period', NULL, NULL),
         ('second_period', NULL, NULL)
@@ -1771,8 +2463,17 @@ class DatabaseHelper {
       });
       return true;
     } catch (e) {
-      print('Errore in clearAllData: $e');
+      print('Errore in clearCurrentModeData: $e');
       return false;
     }
+  }
+
+  /// Pulisce i dati di entrambi i database (Scuola e Università)
+  Future<bool> clearAllData() async {
+    bool res1 = await clearCurrentModeData();
+    try {
+      await resetConnections();
+    } catch (_) {}
+    return res1;
   }
 }
