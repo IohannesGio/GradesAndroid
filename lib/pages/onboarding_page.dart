@@ -21,6 +21,9 @@ class _OnboardingPageState extends State<OnboardingPage> {
   double _passingGrade = 6.0;
   double _maxGrade = 10.0;
   int _targetCfu = 180;
+  String _lodeRule = 'equal_30';
+  double _lodeCustomValue = 31.0;
+  double _lodeDegreeBonus = 0.5;
 
   // Pre-added initial subjects
   final List<String> _initialSubjects = [];
@@ -65,6 +68,9 @@ class _OnboardingPageState extends State<OnboardingPage> {
       passingGrade: _passingGrade,
       maxGrade: _maxGrade,
       targetCfu: _targetCfu,
+      lodeRule: _lodeRule,
+      lodeCustomValue: _lodeCustomValue,
+      lodeDegreeBonus: _lodeDegreeBonus,
     );
   }
 
@@ -477,6 +483,62 @@ class _OnboardingPageState extends State<OnboardingPage> {
                         _buildCfuChoiceChip(360, 'Medicina (360 CFU)', colorScheme),
                       ],
                     ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // 30 e Lode rule setup card
+            Card(
+              elevation: 0,
+              color: colorScheme.surfaceContainerHigh.withOpacity(0.5),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Valutazione "30 e Lode" 🎖️',
+                      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Seleziona il regolamento del tuo ateneo per il calcolo della lode:',
+                      style: theme.textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      value: _lodeRule,
+                      decoration: InputDecoration(
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      ),
+                      items: const [
+                        DropdownMenuItem(value: 'equal_30', child: Text('30L = 30 (Standard)')),
+                        DropdownMenuItem(value: 'equal_31', child: Text('30L = 31 nella media')),
+                        DropdownMenuItem(value: 'equal_32', child: Text('30L = 32 nella media')),
+                        DropdownMenuItem(value: 'bonus_degree_0_5', child: Text('30L = +0.50 punti su voto laurea')),
+                        DropdownMenuItem(value: 'custom', child: Text('Valore Personalizzato')),
+                      ],
+                      onChanged: (val) {
+                        if (val != null) setState(() => _lodeRule = val);
+                      },
+                    ),
+                    if (_lodeRule == 'custom') ...[
+                      const SizedBox(height: 12),
+                      TextField(
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Valore numerico per 30L (es. 31.5)',
+                        ),
+                        onChanged: (val) {
+                          final parsed = double.tryParse(val);
+                          if (parsed != null) _lodeCustomValue = parsed;
+                        },
+                      ),
+                    ],
                   ],
                 ),
               ),

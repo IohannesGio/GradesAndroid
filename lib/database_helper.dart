@@ -1675,8 +1675,7 @@ class DatabaseHelper {
   }
 
   /// Calcola la Media Ponderata per l'Università (Voto * CFU / CFU totali superati)
-  Future<String> returnWeightedAverage() async {
-    final db = await database;
+  Future<String> returnWeightedAverage({double lodeNumericValue = 30.0}) async {
     try {
       final subjects = await listSubjectsFull();
       if (subjects.isEmpty) return 'N/A';
@@ -1687,12 +1686,15 @@ class DatabaseHelper {
       for (var s in subjects) {
         final grades = await listGrades(s.subjectName);
         if (grades.isNotEmpty) {
-          // Calcola la media dei voti della materia
           double subjectAvgSum = 0.0;
           double subjectWeightSum = 0.0;
           for (var g in grades) {
             if (g.weight > 0) {
-              subjectAvgSum += g.grade * g.weight;
+              double gradeValue = g.grade;
+              if (gradeValue >= 30 && (g.note?.toLowerCase().contains('lode') ?? false)) {
+                gradeValue = lodeNumericValue;
+              }
+              subjectAvgSum += gradeValue * g.weight;
               subjectWeightSum += g.weight;
             }
           }
@@ -1732,14 +1734,63 @@ class DatabaseHelper {
     }
   }
 
-  /// Calcola la proiezione del voto di laurea (base 110)
-  Future<String> returnDegreePrediction() async {
-    final weightedAvgStr = await returnWeightedAverage();
+  /// Calcola la proiezione del voto di laurea (base 110 + punti bonus lode)
+  Future<String> returnDegreePrediction({
+    double lodeNumericValue = 30.0,
+    double lodeDegreeBonus = 0.0,
+  }) async {
+    final weightedAvgStr = await returnWeightedAverage(lodeNumericValue: lodeNumericValue);
     final double? weightedAvg = double.tryParse(weightedAvgStr);
     if (weightedAvg == null) return 'N/A';
 
     double degreeBase = (weightedAvg * 110) / 30;
+
+    if (lodeDegreeBonus > 0) {
+      final subjects = await listSubjectsFull();
+      int lodeCount = 0;
+      for (var s in subjects) {
+        final grades = await listGrades(s.subjectName);
+        for (var g in grades) {
+          if (g.grade >= 30 && (g.note?.toLowerCase().contains('lode') ?? false)) {
+            lodeCount++;
+          }
+        }
+      }
+      degreeBase += lodeCount * lodeDegreeBonus;
+    }
+
     return degreeBase.toStringAsFixed(2);
+  }
+
+  /// Restituisce la distribuzione dei voti da 18 a 30L per l'Università
+  Future<Map<String, int>> getUniversityGradeDistribution() async {
+    final db = await database;
+    Map<String, int> distribution = {
+      for (var i = 18; i <= 30; i++) '$i': 0,
+      '30L': 0,
+    };
+
+    try {
+      final List<Map<String, dynamic>> maps = await db.query('grades');
+      for (var map in maps) {
+        final grade = Grade.fromMap(map);
+        if (grade.grade >= 18) {
+          final isLode = grade.grade >= 30 && (grade.note?.toLowerCase().contains('lode') ?? false);
+          if (isLode) {
+            distribution['30L'] = (distribution['30L'] ?? 0) + 1;
+          } else {
+            final key = grade.grade.floor().toString();
+            if (distribution.containsKey(key)) {
+              distribution[key] = (distribution[key] ?? 0) + 1;
+            }
+          }
+        }
+      }
+      return distribution;
+    } catch (e) {
+      print('Errore in getUniversityGradeDistribution: $e');
+      return distribution;
+    }
   }
 
   Future<bool> addGrade(

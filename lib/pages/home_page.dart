@@ -105,10 +105,16 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _loadUniversityData() async {
+    final modeProvider = Provider.of<EducationModeProvider>(context, listen: false);
     final fullSubjects = await dbHelper.listSubjectsFull();
-    final weightedAvg = await dbHelper.returnWeightedAverage();
+    final weightedAvg = await dbHelper.returnWeightedAverage(
+      lodeNumericValue: modeProvider.getLodeNumericValue(),
+    );
     final totalCfu = await dbHelper.returnAcquiredCfu();
-    final degreePred = await dbHelper.returnDegreePrediction();
+    final degreePred = await dbHelper.returnDegreePrediction(
+      lodeNumericValue: modeProvider.getLodeNumericValue(),
+      lodeDegreeBonus: modeProvider.lodeRule == 'bonus_degree_0_5' ? modeProvider.lodeDegreeBonus : 0.0,
+    );
 
     Map<String, String> averagesMap = {};
     for (var s in fullSubjects) {

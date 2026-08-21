@@ -2,7 +2,9 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:provider/provider.dart';
 import '../database_helper.dart';
+import '../providers/education_mode_provider.dart';
 import 'settings_page.dart';
 
 class StatisticsPage extends StatefulWidget {
@@ -14,11 +16,15 @@ class StatisticsPage extends StatefulWidget {
 
 class _StatisticsPageState extends State<StatisticsPage> {
   final dbHelper = DatabaseHelper();
-  // Variabili per i dati dei grafici esistenti
+  
+  // Variabili per Scuola
   List<Map<String, dynamic>> _historicalOriginalAverages = [];
   List<Map<String, dynamic>> _historicalRoundedAverages = [];
   Map<int, int> _firstPeriodGradeDistribution = {};
   Map<int, int> _secondPeriodGradeDistribution = {};
+
+  // Variabili per Università
+  Map<String, int> _universityGradeDistribution = {};
 
   // Variabili per l'analisi per tipologia
   Map<String, double> _averagesByType = {};
@@ -28,7 +34,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
   double _maxGrade = 10.0;
   String? _errorMessage;
 
-  // Opzione per selezionare la materia (null per tutte le materie)
+  // Opzione per selezionare la materia
   String? _selectedSubject;
   List<String> _subjectNames = [];
 
@@ -39,7 +45,6 @@ class _StatisticsPageState extends State<StatisticsPage> {
     _loadMaxGrade();
   }
 
-  // Carica i nomi delle materie per il dropdown
   Future<void> _loadSubjectNames() async {
     try {
       final subjects = await dbHelper.listSubjects();
@@ -48,7 +53,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
         _subjectNames.insert(0, 'Tutte le materie');
         _selectedSubject = _subjectNames.first;
       });
-      _loadChartData(); // Carica tutti i dati
+      _loadChartData();
     } catch (e) {
       setState(() {
         _errorMessage = 'Errore nel caricamento delle materie: $e';
@@ -64,73 +69,66 @@ class _StatisticsPageState extends State<StatisticsPage> {
     });
   }
 
-  // Carica tutti i dati (grafici esistenti + analisi tipologia)
   Future<void> _loadChartData() async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
-      // Resetta dati
       _historicalOriginalAverages = [];
       _historicalRoundedAverages = [];
       _firstPeriodGradeDistribution = {};
       _secondPeriodGradeDistribution = {};
+      _universityGradeDistribution = {};
       _averagesByType = {};
       _countsByType = {};
     });
+
     try {
-      // 1. Caricamento dati grafici esistenti
-      (
-        List<Map<String, dynamic>>,
-        List<Map<String, dynamic>>
-      ) firstPeriodAverages;
-      (
-        List<Map<String, dynamic>>,
-        List<Map<String, dynamic>>
-      ) secondPeriodAverages;
+      final modeProvider = Provider.of<EducationModeProvider>(context, listen: false);
+      final isUni = modeProvider.isUniversity;
 
-      if (_selectedSubject == 'Tutte le materie') {
-        firstPeriodAverages = await dbHelper.returnAverageByDatePeriod(
-            periodName: 'first_period');
-        secondPeriodAverages = await dbHelper.returnAverageByDatePeriod(
-            periodName: 'second_period');
+      if (isUni) {
+        // Caricamento dati Università
+        _universityGradeDistribution = await dbHelper.getUniversityGradeDistribution();
       } else {
-        firstPeriodAverages = await dbHelper.returnAverageBySubjectAndPeriod(
-            periodName: 'first_period', subjectName: _selectedSubject!);
-        secondPeriodAverages = await dbHelper.returnAverageBySubjectAndPeriod(
-            periodName: 'second_period', subjectName: _selectedSubject!);
-      }
+        // Caricamento dati Scuola (periodi)
+        (
+          List<Map<String, dynamic>>,
+          List<Map<String, dynamic>>
+        ) firstPeriodAverages;
+        (
+          List<Map<String, dynamic>>,
+          List<Map<String, dynamic>>
+        ) secondPeriodAverages;
 
-      Map<int, int> firstPeriodCounts;
-      Map<int, int> secondPeriodCounts;
+        if (_selectedSubject == 'Tutte le materie') {
+          firstPeriodAverages = await dbHelper.returnAverageByDatePeriod(
+              periodName: 'first_period');
+          secondPeriodAverages = await dbHelper.returnAverageByDatePeriod(
+              periodName: 'second_period');
+        } else {
+          firstPeriodAverages = await dbHelper.returnAverageBySubjectAndPeriod(
+              periodName: 'first_period', subjectName: _selectedSubject!);
+          secondPeriodAverages = await dbHelper.returnAverageBySubjectAndPeriod(
+              periodName: 'second_period', subjectName: _selectedSubject!);
+        }
 
-      if (_selectedSubject == 'Tutte le materie') {
-        firstPeriodCounts =
-            await dbHelper.returnGradeProportionsByPeriod('first_period');
-        secondPeriodCounts =
-            await dbHelper.returnGradeProportionsByPeriod('second_period');
-      } else {
-        firstPeriodCounts =
-            await dbHelper.returnGradeProportionsByPeriodAndSubject(
-                'first_period', _selectedSubject!);
-        secondPeriodCounts =
-            await dbHelper.returnGradeProportionsByPeriodAndSubject(
-                'second_period', _selectedSubject!);
-      }
+        Map<int, int> firstPeriodCounts;
+        Map<int, int> secondPeriodCounts;
 
-      // 2. Caricamento dati Analisi Tipologia
-      Map<String, double> averagesByType;
-      Map<String, int> countsByType;
+        if (_selectedSubject == 'Tutte le materie') {
+          firstPeriodCounts =
+              await dbHelper.returnGradeProportionsByPeriod('first_period');
+          secondPeriodCounts =
+              await dbHelper.returnGradeProportionsByPeriod('second_period');
+        } else {
+          firstPeriodCounts =
+              await dbHelper.returnGradeProportionsByPeriodAndSubject(
+                  'first_period', _selectedSubject!);
+          secondPeriodCounts =
+              await dbHelper.returnGradeProportionsByPeriodAndSubject(
+                  'second_period', _selectedSubject!);
+        }
 
-      if (_selectedSubject == 'Tutte le materie') {
-        averagesByType = await dbHelper.getOverallAveragesByType();
-        countsByType = await dbHelper.getGradeCountByType(null);
-      } else {
-        averagesByType = await dbHelper.getAveragesByType(_selectedSubject!);
-        countsByType = await dbHelper.getGradeCountByType(_selectedSubject);
-      }
-
-      setState(() {
-        // Elaborazione dati grafici esistenti
         List<Map<String, dynamic>> combinedHistoricalAverages = [];
         for (var avgData in firstPeriodAverages.$1) {
           combinedHistoricalAverages.add({
@@ -175,11 +173,23 @@ class _StatisticsPageState extends State<StatisticsPage> {
             .toList();
         _firstPeriodGradeDistribution = firstPeriodCounts;
         _secondPeriodGradeDistribution = secondPeriodCounts;
+      }
 
-        // Impostazione dati analisi tipologia
+      // Analisi per Tipologia
+      Map<String, double> averagesByType;
+      Map<String, int> countsByType;
+
+      if (_selectedSubject == 'Tutte le materie') {
+        averagesByType = await dbHelper.getOverallAveragesByType();
+        countsByType = await dbHelper.getGradeCountByType(null);
+      } else {
+        averagesByType = await dbHelper.getAveragesByType(_selectedSubject!);
+        countsByType = await dbHelper.getGradeCountByType(_selectedSubject);
+      }
+
+      setState(() {
         _averagesByType = averagesByType;
         _countsByType = countsByType;
-
         _isLoading = false;
       });
     } catch (e) {
@@ -189,11 +199,8 @@ class _StatisticsPageState extends State<StatisticsPage> {
           _isLoading = false;
         });
       }
-      print('Errore nel caricamento dei dati: $e');
     }
   }
-
-  // --- Helpers per Analisi Tipologia ---
 
   Color _getColorForType(String type) {
     switch (type.toLowerCase()) {
@@ -204,7 +211,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
       case 'pratico':
         return Colors.orange;
       default:
-        return Colors.grey;
+        return Colors.purple;
     }
   }
 
@@ -226,14 +233,14 @@ class _StatisticsPageState extends State<StatisticsPage> {
     final icon = _getIconForType(type);
 
     return Card(
-      elevation: 4,
+      elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Container(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
           gradient: LinearGradient(
-            colors: [color.withOpacity(0.1), color.withOpacity(0.05)],
+            colors: [color.withOpacity(0.12), color.withOpacity(0.04)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -244,14 +251,14 @@ class _StatisticsPageState extends State<StatisticsPage> {
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
                     color: color.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(icon, color: color, size: 28),
+                  child: Icon(icon, color: color, size: 24),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -259,17 +266,16 @@ class _StatisticsPageState extends State<StatisticsPage> {
                       Text(
                         type.toUpperCase(),
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: 15,
                           fontWeight: FontWeight.bold,
                           color: color,
                         ),
                       ),
-                      const SizedBox(height: 4),
                       Text(
                         '$count ${count == 1 ? 'voto' : 'voti'}',
                         style: TextStyle(
                           fontSize: 12,
-                          color: Colors.grey[600],
+                          color: Theme.of(context).disabledColor,
                         ),
                       ),
                     ],
@@ -277,18 +283,15 @@ class _StatisticsPageState extends State<StatisticsPage> {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'Media',
-                  style: TextStyle(fontSize: 14, color: Colors.grey[700]),
-                ),
+                const Text('Media', style: TextStyle(fontSize: 14)),
                 Text(
                   average.toStringAsFixed(2),
                   style: TextStyle(
-                    fontSize: 32,
+                    fontSize: 28,
                     fontWeight: FontWeight.bold,
                     color: color,
                   ),
@@ -298,118 +301,8 @@ class _StatisticsPageState extends State<StatisticsPage> {
           ],
         ),
       ),
-    ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.1, end: 0);
+    ).animate().fadeIn(duration: 300.ms).slideY(begin: 0.1, end: 0);
   }
-
-  Widget _buildTypeAnalysisBarChart() {
-    if (_averagesByType.isEmpty) return const SizedBox.shrink();
-
-    final types = _averagesByType.keys.toList();
-
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Confronto Tipologie',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
-            const SizedBox(height: 24),
-            SizedBox(
-              height: 250,
-              child: BarChart(
-                BarChartData(
-                  alignment: BarChartAlignment.spaceAround,
-                  maxY: _maxGrade,
-                  barTouchData: BarTouchData(
-                    touchTooltipData: BarTouchTooltipData(
-                      getTooltipColor: (group) => Colors.black87,
-                      getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                        return BarTooltipItem(
-                          rod.toY.toStringAsFixed(2),
-                          const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  titlesData: FlTitlesData(
-                    show: true,
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        getTitlesWidget: (value, meta) {
-                          if (value.toInt() < types.length) {
-                            return Padding(
-                              padding: const EdgeInsets.only(top: 8),
-                              child: Text(
-                                types[value.toInt()],
-                                style: const TextStyle(fontSize: 12),
-                              ),
-                            );
-                          }
-                          return const Text('');
-                        },
-                      ),
-                    ),
-                    leftTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        reservedSize: 40,
-                        getTitlesWidget: (value, meta) {
-                          return Text(
-                            value.toInt().toString(),
-                            style: const TextStyle(fontSize: 12),
-                          );
-                        },
-                      ),
-                    ),
-                    topTitles:
-                        AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    rightTitles:
-                        AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  ),
-                  gridData: FlGridData(show: true, drawVerticalLine: false),
-                  borderData: FlBorderData(show: false),
-                  barGroups: List.generate(
-                    types.length,
-                    (index) {
-                      final type = types[index];
-                      final average = _averagesByType[type]!;
-                      final color = _getColorForType(type);
-
-                      return BarChartGroupData(
-                        x: index,
-                        barRods: [
-                          BarChartRodData(
-                            toY: average,
-                            color: color,
-                            width: 30, // Larghezza barra leggermente ridotta
-                            borderRadius: const BorderRadius.vertical(
-                                top: Radius.circular(6)),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    ).animate().fadeIn(duration: 600.ms);
-  }
-
-  // --- Metodi esistenti per i grafici classici ---
 
   Widget _buildAverageTrendChart(BuildContext context) {
     if (_historicalOriginalAverages.isEmpty &&
@@ -482,25 +375,18 @@ class _StatisticsPageState extends State<StatisticsPage> {
     return AspectRatio(
       aspectRatio: 1.5,
       child: Padding(
-        padding:
-            const EdgeInsets.only(right: 18, left: 12, top: 24, bottom: 12),
+        padding: const EdgeInsets.only(right: 18, left: 12, top: 24, bottom: 12),
         child: LineChart(
           LineChartData(
             lineTouchData: LineTouchData(
               touchTooltipData: LineTouchTooltipData(
-                tooltipBorderRadius: BorderRadius.circular(8),
-                getTooltipColor: (spot) {
-                  final brightness = Theme.of(context).brightness;
-                  return brightness == Brightness.dark
-                      ? Colors.grey[800]!.withOpacity(0.9)
-                      : Colors.white.withOpacity(0.9);
-                },
+                getTooltipColor: (_) => Colors.black87,
                 getTooltipItems: (touchedSpots) {
                   return touchedSpots
                       .map((spot) => LineTooltipItem(
-                          '${spot.y.toStringAsFixed(2)}',
+                          spot.y.toStringAsFixed(2),
                           TextStyle(
-                              color: spot.bar.color ?? Colors.black,
+                              color: spot.bar.color ?? Colors.white,
                               fontWeight: FontWeight.bold)))
                       .toList();
                 },
@@ -563,7 +449,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
     );
   }
 
-  Future<Widget> _buildGradeDistributionChart() async {
+  Widget _buildSchoolGradeDistributionChart() {
     if (_firstPeriodGradeDistribution.isEmpty &&
         _secondPeriodGradeDistribution.isEmpty) {
       return const Center(
@@ -578,9 +464,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
     ];
     if (allGrades.isNotEmpty) maxGradeValue = allGrades.reduce(max);
 
-    final gradesSettings = await SettingsPage.loadPassingAndMaxGrades();
-    final int maxPossibleGrade = gradesSettings['max_grade']?.toInt() ?? 10;
-    int effectiveMaxX = max(maxGradeValue, maxPossibleGrade);
+    int effectiveMaxX = max(maxGradeValue, 10);
 
     double maxCount = 0;
     final allCounts = [
@@ -589,17 +473,6 @@ class _StatisticsPageState extends State<StatisticsPage> {
     ];
     if (allCounts.isNotEmpty) maxCount = allCounts.reduce(max).toDouble();
     double maxY = (maxCount + 1).ceilToDouble();
-
-    int mostFrequentGrade = 0;
-    int maxFrequency = 0;
-    for (int i = 0; i <= effectiveMaxX; i++) {
-      final totalCount = (_firstPeriodGradeDistribution[i] ?? 0) +
-          (_secondPeriodGradeDistribution[i] ?? 0);
-      if (totalCount > maxFrequency) {
-        maxFrequency = totalCount;
-        mostFrequentGrade = i;
-      }
-    }
 
     List<BarChartGroupData> barGroups = [];
     for (int i = 0; i <= effectiveMaxX; i++) {
@@ -618,84 +491,152 @@ class _StatisticsPageState extends State<StatisticsPage> {
           barsSpace: 2));
     }
 
-    return LayoutBuilder(builder: (context, constraints) {
-      final int barCount = effectiveMaxX + 1;
-      const double minWidthPerBar = 40.0;
-      final double requiredWidth = barCount * minWidthPerBar;
-      final bool needsScroll = requiredWidth > constraints.maxWidth;
-      final ScrollController scrollController = ScrollController();
+    return AspectRatio(
+      aspectRatio: 1.5,
+      child: Padding(
+        padding: const EdgeInsets.only(right: 18, left: 12, top: 24, bottom: 12),
+        child: BarChart(BarChartData(
+            barGroups: barGroups,
+            barTouchData: BarTouchData(
+                touchTooltipData: BarTouchTooltipData(
+                    getTooltipColor: (_) => Colors.black87,
+                    getTooltipItem: (g, gi, r, ri) => BarTooltipItem(
+                        '${r.toY.toInt()}',
+                        const TextStyle(color: Colors.white)))),
+            gridData: FlGridData(show: true),
+            titlesData: FlTitlesData(
+              leftTitles:
+                  AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              bottomTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 30,
+                      interval: 1,
+                      getTitlesWidget: (v, m) => SideTitleWidget(
+                          meta: m,
+                          space: 8,
+                          child: Text('${v.toInt()}',
+                              style: const TextStyle(fontSize: 10))))),
+              rightTitles:
+                  AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              topTitles:
+                  AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            ),
+            borderData: FlBorderData(
+                show: true,
+                border: Border.all(color: const Color(0xff37434d), width: 1)),
+            minY: 0,
+            maxY: maxY)),
+      ),
+    );
+  }
 
-      Widget chartWidget = AspectRatio(
-        aspectRatio: 1.5,
-        child: Padding(
-          padding:
-              const EdgeInsets.only(right: 18, left: 12, top: 24, bottom: 12),
-          child: BarChart(BarChartData(
-              barGroups: barGroups,
-              barTouchData: BarTouchData(
-                  touchTooltipData: BarTouchTooltipData(
-                      getTooltipColor: (_) => Colors.black87,
-                      getTooltipItem: (g, gi, r, ri) => BarTooltipItem(
-                          '${r.toY.toInt()}',
-                          const TextStyle(color: Colors.white)))),
-              gridData: FlGridData(show: true),
-              titlesData: FlTitlesData(
-                leftTitles:
-                    AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                        showTitles: true,
-                        reservedSize: 30,
-                        interval: 1,
-                        getTitlesWidget: (v, m) => SideTitleWidget(
-                            meta: m,
-                            space: 8,
-                            child: Text('${v.toInt()}',
-                                style: const TextStyle(fontSize: 10))))),
-                rightTitles:
-                    AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                topTitles:
-                    AxisTitles(sideTitles: SideTitles(showTitles: false)),
-              ),
-              borderData: FlBorderData(
-                  show: true,
-                  border: Border.all(color: const Color(0xff37434d), width: 1)),
-              minY: 0,
-              maxY: maxY)),
+  Widget _buildUniversityGradeDistributionChart() {
+    final keys = ['18', '19', '20', '21', '22', '23', '24', '25', '26', '27', '28', '29', '30', '30L'];
+    
+    int maxCount = 0;
+    for (var k in keys) {
+      final cnt = _universityGradeDistribution[k] ?? 0;
+      if (cnt > maxCount) maxCount = cnt;
+    }
+    final double maxY = (maxCount + 1).toDouble();
+
+    List<BarChartGroupData> barGroups = [];
+    for (int i = 0; i < keys.length; i++) {
+      final key = keys[i];
+      final count = _universityGradeDistribution[key] ?? 0;
+      barGroups.add(
+        BarChartGroupData(
+          x: i,
+          barRods: [
+            BarChartRodData(
+              toY: count.toDouble(),
+              color: key == '30L' ? Colors.amber : Colors.blueAccent,
+              width: 14,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+            ),
+          ],
         ),
       );
+    }
 
-      if (needsScroll) {
-        final double scrollPosition = (mostFrequentGrade * minWidthPerBar) -
-            (constraints.maxWidth / 2) +
-            (minWidthPerBar / 2);
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (scrollController.hasClients)
-            scrollController.jumpTo(scrollPosition.clamp(
-                0.0, requiredWidth - constraints.maxWidth));
-        });
-        return SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            controller: scrollController,
-            child: SizedBox(width: requiredWidth, child: chartWidget));
-      } else {
-        return chartWidget;
-      }
-    });
+    return AspectRatio(
+      aspectRatio: 1.5,
+      child: Padding(
+        padding: const EdgeInsets.only(right: 18, left: 12, top: 24, bottom: 12),
+        child: BarChart(
+          BarChartData(
+            barGroups: barGroups,
+            barTouchData: BarTouchData(
+              touchTooltipData: BarTouchTooltipData(
+                getTooltipColor: (_) => Colors.black87,
+                getTooltipItem: (g, gi, r, ri) => BarTooltipItem(
+                  '${keys[g.x]}: ${r.toY.toInt()}',
+                  const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+            gridData: FlGridData(show: true),
+            titlesData: FlTitlesData(
+              leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              bottomTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  reservedSize: 30,
+                  interval: 1,
+                  getTitlesWidget: (v, m) {
+                    final idx = v.toInt();
+                    if (idx >= 0 && idx < keys.length) {
+                      return SideTitleWidget(
+                        meta: m,
+                        space: 4,
+                        child: Text(
+                          keys[idx],
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: keys[idx] == '30L' ? FontWeight.bold : FontWeight.normal,
+                            color: keys[idx] == '30L' ? Colors.amber[800] : null,
+                          ),
+                        ),
+                      );
+                    }
+                    return const SizedBox.shrink();
+                  },
+                ),
+              ),
+              rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            ),
+            borderData: FlBorderData(
+              show: true,
+              border: Border.all(color: const Color(0xff37434d), width: 1),
+            ),
+            minY: 0,
+            maxY: maxY,
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildLegendRow(Color color, String label) {
     return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4.0),
-        child: Row(children: [
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Row(
+        children: [
           Container(width: 16, height: 16, color: color),
           const SizedBox(width: 8),
-          Text(label, style: Theme.of(context).textTheme.bodyMedium)
-        ]));
+          Text(label, style: Theme.of(context).textTheme.bodyMedium),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final modeProvider = Provider.of<EducationModeProvider>(context);
+    final isUni = modeProvider.isUniversity;
+
     return Scaffold(
       appBar: AppBar(title: const Text('Statistiche')),
       body: _isLoading
@@ -705,15 +646,18 @@ class _StatisticsPageState extends State<StatisticsPage> {
               : ListView(
                   padding: const EdgeInsets.all(16.0),
                   children: [
-                    // Dropdown per selezionare la materia
+                    // Dropdown per selezionare la materia/insegnamento
                     DropdownButtonFormField<String>(
-                      value: _selectedSubject,
-                      decoration: const InputDecoration(
-                          labelText: 'Seleziona Materia',
-                          border: OutlineInputBorder()),
+                      initialValue: _selectedSubject,
+                      decoration: InputDecoration(
+                        labelText: isUni ? 'Seleziona Insegnamento' : 'Seleziona Materia',
+                        border: const OutlineInputBorder(),
+                      ),
                       items: _subjectNames.map((String subject) {
                         return DropdownMenuItem<String>(
-                            value: subject, child: Text(subject));
+                          value: subject,
+                          child: Text(subject),
+                        );
                       }).toList(),
                       onChanged: (String? newValue) {
                         if (newValue != null) {
@@ -724,91 +668,103 @@ class _StatisticsPageState extends State<StatisticsPage> {
                         }
                       },
                     ),
-                    const SizedBox(height: 24),
 
-                    Text(
+                    if (!isUni) ...[
+                      const SizedBox(height: 24),
+                      Text(
                         _selectedSubject == 'Tutte le materie'
                             ? 'Andamento della Media Generale'
                             : 'Andamento Media: $_selectedSubject',
                         style: Theme.of(context).textTheme.titleLarge,
-                        textAlign: TextAlign.center),
-                    const SizedBox(height: 16),
-                    _buildAverageTrendChart(context),
-                    const SizedBox(height: 16),
-                    // Legenda grafico a linee
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildLegendRow(
-                            Colors.blueAccent, 'Primo Quadrimestre - Media'),
-                        _buildLegendRow(Colors.purpleAccent,
-                            'Primo Quadrimestre - Arrotondata'),
-                        _buildLegendRow(Colors.orangeAccent,
-                            'Secondo Quadrimestre - Media'),
-                        _buildLegendRow(Colors.pinkAccent,
-                            'Secondo Quadrimestre - Arrotondata'),
-                      ],
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      _buildAverageTrendChart(context),
+                      const SizedBox(height: 16),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildLegendRow(
+                              Colors.blueAccent, 'Primo Quadrimestre - Media'),
+                          _buildLegendRow(Colors.purpleAccent,
+                              'Primo Quadrimestre - Arrotondata'),
+                          _buildLegendRow(Colors.orangeAccent,
+                              'Secondo Quadrimestre - Media'),
+                          _buildLegendRow(Colors.pinkAccent,
+                              'Secondo Quadrimestre - Arrotondata'),
+                        ],
+                      ),
+                      const SizedBox(height: 32),
+                      const Divider(thickness: 2),
+                      const SizedBox(height: 16),
+                    ],
+
+                    // Distribuzione dei Voti
+                    Text(
+                      isUni ? 'Distribuzione Voti Esami (18 - 30L)' : 'Distribuzione dei Voti',
+                      style: Theme.of(context).textTheme.titleLarge,
+                      textAlign: TextAlign.center,
                     ),
+                    const SizedBox(height: 16),
+
+                    isUni
+                        ? _buildUniversityGradeDistributionChart()
+                        : _buildSchoolGradeDistributionChart(),
+
+                    const SizedBox(height: 16),
+
+                    if (isUni)
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          _buildLegendRow(Colors.blueAccent, 'Esami (18 - 30)'),
+                          const SizedBox(width: 24),
+                          _buildLegendRow(Colors.amber, '30 e Lode (30L)'),
+                        ],
+                      )
+                    else
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildLegendRow(
+                              Colors.blueAccent, 'Primo Quadrimestre'),
+                          _buildLegendRow(
+                              Colors.orangeAccent, 'Secondo Quadrimestre'),
+                        ],
+                      ),
 
                     const SizedBox(height: 32),
                     const Divider(thickness: 2),
                     const SizedBox(height: 16),
 
-                    Text('Distribuzione dei Voti',
-                        style: Theme.of(context).textTheme.titleLarge,
-                        textAlign: TextAlign.center),
-                    const SizedBox(height: 16),
-                    FutureBuilder<Widget>(
-                      future: _buildGradeDistributionChart(),
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.waiting)
-                          return const Center(
-                              child: CircularProgressIndicator());
-                        return snapshot.data ?? const SizedBox.shrink();
-                      },
+                    // Analisi per Tipologia
+                    Text(
+                      'Analisi per Tipologia',
+                      style: Theme.of(context).textTheme.titleLarge,
+                      textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 16),
-                    // Legenda grafico a barre distribuzione
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildLegendRow(
-                            Colors.blueAccent, 'Primo Quadrimestre'),
-                        _buildLegendRow(
-                            Colors.orangeAccent, 'Secondo Quadrimestre'),
-                      ],
-                    ),
-
-                    const SizedBox(height: 32),
-                    const Divider(thickness: 2),
-                    const SizedBox(height: 16),
-
-                    // --- SEZIONE ANALISI TIPOLOGIA ---
-                    Text('Analisi per Tipologia',
-                        style: Theme.of(context).textTheme.titleLarge,
-                        textAlign: TextAlign.center),
                     const SizedBox(height: 16),
 
                     if (_averagesByType.isEmpty)
                       Center(
-                          child: Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Text(
-                                  'Nessun dato disponibile per tipologia.',
-                                  style: TextStyle(color: Colors.grey[600]))))
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Text(
+                            'Nessun dato disponibile per tipologia.',
+                            style: TextStyle(color: Theme.of(context).disabledColor),
+                          ),
+                        ),
+                      )
                     else ...[
-                      // Grafico confronto tipologie
-                      _buildTypeAnalysisBarChart(),
-                      const SizedBox(height: 24),
-                      // Card dettagliate per tipologia
-                      ..._averagesByType.entries.map((entry) {
-                        final type = entry.key;
-                        final average = entry.value;
-                        final count = _countsByType[type] ?? 0;
-                        return Padding(
-                            padding: const EdgeInsets.only(bottom: 16),
-                            child: _buildTypeCard(type, average, count));
-                      }).toList(),
+                      Column(
+                        children: _averagesByType.entries.map((entry) {
+                          final count = _countsByType[entry.key] ?? 0;
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: _buildTypeCard(entry.key, entry.value, count),
+                          );
+                        }).toList(),
+                      ),
                     ],
                   ],
                 ),

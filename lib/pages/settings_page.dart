@@ -456,6 +456,69 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
             ),
 
+            if (isUni) ...[
+              const SizedBox(height: 12),
+              Card(
+                elevation: 1,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.workspace_premium, color: Theme.of(context).colorScheme.primary),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Regola "30 e Lode"',
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      DropdownButtonFormField<String>(
+                        value: modeProvider.lodeRule,
+                        decoration: InputDecoration(
+                          labelText: 'Calcolo della Lode',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        ),
+                        items: const [
+                          DropdownMenuItem(value: 'equal_30', child: Text('30L = 30 (Standard)')),
+                          DropdownMenuItem(value: 'equal_31', child: Text('30L = 31 nella media')),
+                          DropdownMenuItem(value: 'equal_32', child: Text('30L = 32 nella media')),
+                          DropdownMenuItem(value: 'bonus_degree_0_5', child: Text('30L = +0.50 punti su voto laurea')),
+                          DropdownMenuItem(value: 'custom', child: Text('Valore Personalizzato')),
+                        ],
+                        onChanged: (val) {
+                          if (val != null) {
+                            modeProvider.setLodeRule(val);
+                          }
+                        },
+                      ),
+                      if (modeProvider.lodeRule == 'custom') ...[
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          initialValue: modeProvider.lodeCustomValue.toString(),
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            labelText: 'Valore numerico custom (es. 31.5)',
+                          ),
+                          onChanged: (val) {
+                            final parsed = double.tryParse(val);
+                            if (parsed != null) {
+                              modeProvider.setLodeRule('custom', customValue: parsed);
+                            }
+                          },
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ],
+
             const SizedBox(height: 24),
 
             // --- SECTION 2: PERIODI / SEMESTRI ---
