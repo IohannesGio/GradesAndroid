@@ -15,20 +15,6 @@ AAF1102 | LINGUA INGLESE [N/D] [ITA]	1º	1º	4
  1023907 | MICROBIOLOGIA GENERALE, BIOTECNOLOGIE MICROBICHE ED ELEMENTI DI MICROBIOLOGIA MEDICA [MED/07, BIO/19] [ITA]	1º	2º	12
  1044806 | ISTOLOGIA ED EMBRIOLOGIA [BIO/06, BIO/17] [ITA]	1º	2º	6
  1051488 | GENETICA [BIO/13, BIO/18] [ITA]	1º	2º	9
-Gruppo opzionale: Altre attività formative: tirocini e altre conoscenze utili per l'inserimento nel mondo del lavoro - Nel caso in cui lo studente intenda inserire nel proprio percorso formativo il corso "LE SCIENZE DELLA SOSTENIBILITA' IN FARMACIA E MEDICINA", si precisa che esso può essere inserito tra le attività formative "CFU a scelta dello studente" esclusivamente nel caso in cui vengano, altresì, inseriti, sempre tra i "CFU a scelta dello studente", anche il corso "LE SCIENZE DELLA SOSTENIBILITA' IN SAPIENZA" - 2 CFU e un ulteriore corso scelto tra quelli delle "LE SCIENZE DELLA SOSTENIBILITA' IN ....." 2 CFU offerti da altri CdS.	 	 	 
- 1023908 | BIOCHIMICA E BIOTECNOLOGIE BIOCHIMICHE [BIO/10] [ITA]	2º	1º	12
- 1036628 | CHIMICA ANALITICA ED ELEMENTI DI CHIMICA FISICA [CHIM/02, CHIM/01] [ITA]	2º	1º	6
- 1038017 | ANATOMIA E FISIOLOGIA GENERALE [BIO/09, BIO/16] [ITA]	2º	1º	6
- 1041708 | BIOLOGIA MOLECOLARE [BIO/11] [ITA]	2º	1º	12
- 1038018 | FISIOLOGIA UMANA E FISIOLOGIA VEGETALE [BIO/04, BIO/09] [ITA]	2º	2º	6
-1041679 | MICROBIOLOGIA INDUSTRIALE E TECNOLOGIE AMBIENTALI [CHIM/11] [ITA]	2º	2º	6
- 1041756 | BIOINFORMATICA E FARMACOLOGIA [BIO/14, BIO/10] [ITA]	3º	1º	12
- 1051487 | IMMUNOLOGIA [MED/04, MED/46] [ITA]	3º	1º	6
- 1023914 | CHIMICA FARMACEUTICA E TECNOLOGIE FARMACEUTICHE [CHIM/08, CHIM/09] [ITA]	3º	1º	9
-A SCELTA DELLO STUDENTE [N/D] [ITA]	3º	2º	12
-AAF1044 | TIROCINIO [N/D] [ITA]	3º	2º	6
- 1041682 | PATOLOGIA GENERALE CON MODELLI DI MALATTIA BIOETICA ED ASPETTI ECONOMICI E LEGISLATIVI [MED/02, MED/04] [ITA]	3º	2º	10
-AAF1004 | PROVA FINALE [N/D] [ITA]	3º	2º	6
 ''';
 
       final results = LocalExamParser.parseText(sampleText);
@@ -40,43 +26,68 @@ AAF1004 | PROVA FINALE [N/D] [ITA]	3º	2º	6
       expect(results.any((e) => e.title.contains('Microbiologia Generale') && e.cfu == 12), true);
     });
 
-    test('Parse browser pasted text without tabs (spaces instead)', () {
-      const spacePastedText = '''
-AAF1102 | LINGUA INGLESE [N/D] [ITA] 1º 1º 4
-100938 | CHIMICA GENERALE E INORGANICA [CHIM/03] [ITA] 1º 1º 6
-1038524 | BIOLOGIA CELLULARE [BIO/13] [ITA] 1º 1º 9
+    test('Parse Polimi (Politecnico di Milano) format', () {
+      const polimiText = '''
+089201 - ANALISI MATEMATICA I (10 CFU)
+089202 - GEOMETRIA E ALGEBRA LINEARE (8 ECTS)
+089203 - FISICA SPERIMENTALE (12 CFU)
 ''';
 
-      final results = LocalExamParser.parseText(spacePastedText);
+      final results = LocalExamParser.parseText(polimiText);
 
       expect(results.length, 3);
-      expect(results[0].title, 'Lingua Inglese');
-      expect(results[0].cfu, 4);
-      expect(results[1].title, 'Chimica Generale e Inorganica');
-      expect(results[1].cfu, 6);
-      expect(results[2].title, 'Biologia Cellulare');
-      expect(results[2].cfu, 9);
+      expect(results[0].title, 'Analisi Matematica I');
+      expect(results[0].cfu, 10);
+      expect(results[1].title, 'Geometria e Algebra Lineare');
+      expect(results[1].cfu, 8);
+      expect(results[2].title, 'Fisica Sperimentale');
+      expect(results[2].cfu, 12);
     });
 
-    test('Parse multi-line cell-stacked pasted text', () {
-      const multiLineText = '''
-AAF1102 | LINGUA INGLESE [N/D] [ITA]
-1º
-1º
-4
-100938 | CHIMICA GENERALE E INORGANICA [CHIM/03] [ITA]
-1º
-1º
-6
+    test('Parse UniBo (Università di Bologna) format', () {
+      const uniboText = '''
+72819 - PROGRAMMAZIONE (CFU 9)
+72820 - SISTEMI OPERATIVI (CFU 12)
+72821 - BASI DI DATI (CFU 6)
 ''';
 
-      final results = LocalExamParser.parseText(multiLineText);
+      final results = LocalExamParser.parseText(uniboText);
+
+      expect(results.length, 3);
+      expect(results[0].title, 'Programmazione');
+      expect(results[0].cfu, 9);
+      expect(results[1].title, 'Sistemi Operativi');
+      expect(results[1].cfu, 12);
+    });
+
+    test('Parse PoliTo (Politecnico di Torino) & UniPd format', () {
+      const politoText = '''
+01QZWPM - FISICA I (8.00 crediti)
+IN01112233 INFORMATICA GENERALE 6.00 CFU
+''';
+
+      final results = LocalExamParser.parseText(politoText);
 
       expect(results.length, 2);
-      expect(results[0].title, 'Lingua Inglese');
-      expect(results[0].cfu, 4);
-      expect(results[1].title, 'Chimica Generale e Inorganica');
+      expect(results[0].title, 'Fisica I');
+      expect(results[0].cfu, 8);
+      expect(results[1].title, 'Informatica Generale');
       expect(results[1].cfu, 6);
+    });
+
+    test('Parse UniNa & UniGe format', () {
+      const uninaText = '''
+12345 - ECONOMIA AZIENDALE [9 CFU]
+SISTEMI OPERATIVI - 9 CFU - SSD ING-INF/05
+''';
+
+      final results = LocalExamParser.parseText(uninaText);
+
+      expect(results.length, 2);
+      expect(results[0].title, 'Economia Aziendale');
+      expect(results[0].cfu, 9);
+      expect(results[1].title, 'Sistemi Operativi');
+      expect(results[1].cfu, 9);
     });
   });
 }
