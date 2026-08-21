@@ -1790,6 +1790,31 @@ class DatabaseHelper {
     }
   }
 
+  /// Calcola la Media Aritmetica per l'Università (Somma voti / N. esami verbalizzati con voto numerico)
+  Future<String> returnArithmeticAverage({double lodeNumericValue = 30.0}) async {
+    try {
+      final db = await database;
+      final maps = await db.query('grades');
+      double totalSum = 0.0;
+      int count = 0;
+
+      for (var map in maps) {
+        final g = Grade.fromMap(map);
+        if (g.weight > 0 && !g.isIdoneita && g.grade >= 18) {
+          final val = g.isLode ? lodeNumericValue : g.grade;
+          totalSum += val;
+          count++;
+        }
+      }
+
+      if (count == 0) return 'N/A';
+      return (totalSum / count).toStringAsFixed(2);
+    } catch (e) {
+      print('Errore in returnArithmeticAverage: $e');
+      return 'N/A';
+    }
+  }
+
   /// Calcola il totale dei CFU conseguiti (materie che hanno almeno un voto di sufficienza >= 18)
   Future<int> returnAcquiredCfu() async {
     try {

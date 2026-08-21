@@ -31,6 +31,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
   // — Università
   Map<String, int> _universityGradeDistribution = {};
   String _weightedAverage = 'N/A';
+  String _arithmeticAverage = 'N/A';
   int _acquiredCfu = 0;
   String _degreePrediction = 'N/A';
   // Andamento media ponderata nel tempo: lista ordinata per data di {x: esame_n, y: media}
@@ -76,6 +77,9 @@ class _StatisticsPageState extends State<StatisticsPage> {
       final weightedAvg = await dbHelper.returnWeightedAverage(
         lodeNumericValue: modeProvider.getLodeNumericValue(),
       );
+      final arithmeticAvg = await dbHelper.returnArithmeticAverage(
+        lodeNumericValue: modeProvider.getLodeNumericValue(),
+      );
       final acquiredCfu = await dbHelper.returnAcquiredCfu();
       final degreePred = await dbHelper.returnDegreePrediction(
         lodeNumericValue: modeProvider.getLodeNumericValue(),
@@ -109,6 +113,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
       if (mounted) {
         setState(() {
           _weightedAverage = weightedAvg;
+          _arithmeticAverage = arithmeticAvg;
           _acquiredCfu = acquiredCfu;
           _degreePrediction = degreePred;
           _universityGradeDistribution = distribution;
@@ -297,11 +302,21 @@ class _StatisticsPageState extends State<StatisticsPage> {
   }
 
   Widget _buildUniSummaryCards(EducationModeProvider modeProvider) {
-    return Row(
+    return Column(
       children: [
-        _buildStatCard('Media Ponderata', _weightedAverage),
-        _buildStatCard('CFU Acquisiti', '$_acquiredCfu CFU'),
-        _buildStatCard('Voto Laurea', '$_degreePrediction/110', customColor: Colors.purple),
+        Row(
+          children: [
+            _buildStatCard('Media Ponderata', _weightedAverage),
+            _buildStatCard('Media Aritmetica', _arithmeticAverage),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            _buildStatCard('CFU Acquisiti', '$_acquiredCfu CFU'),
+            _buildStatCard('Voto Laurea', '$_degreePrediction/110', customColor: Colors.purple),
+          ],
+        ),
       ],
     );
   }
