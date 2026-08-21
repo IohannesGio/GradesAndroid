@@ -91,7 +91,6 @@ class _StatisticsPageState extends State<StatisticsPage> with WidgetsBindingObse
 
     try {
       final modeProvider = Provider.of<EducationModeProvider>(context, listen: false);
-      final fullSubjects = await dbHelper.listSubjectsFull();
       final weightedAvg = await dbHelper.returnWeightedAverage(
         lodeNumericValue: modeProvider.getLodeNumericValue(),
       );
