@@ -6,6 +6,8 @@ import 'package:provider/provider.dart';
 import '../database_helper.dart';
 import '../providers/education_mode_provider.dart';
 import '../utils/grade_colors.dart';
+import '../utils/date_utils.dart';
+import 'subject_detail_page.dart';
 import 'settings_page.dart';
 
 class StatisticsPage extends StatefulWidget {
@@ -32,6 +34,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
   Map<String, int> _universityGradeDistribution = {};
   List<Subject> _uniSubjects = [];
   Map<String, String> _uniSubjectGrades = {}; // subjectName -> voto display
+  Map<String, Grade?> _uniFullGrades = {}; // subjectName -> Grade object
   String _weightedAverage = 'N/A';
   int _acquiredCfu = 0;
   int _totalPlannedCfu = 0;
@@ -89,14 +92,17 @@ class _StatisticsPageState extends State<StatisticsPage> {
       final averagesByType = await dbHelper.getOverallAveragesByType();
       final countsByType = await dbHelper.getGradeCountByType(null);
 
-      // Calcola il voto display per ogni insegnamento
+      // Calcola il voto display ed il Grade object per ogni insegnamento
       Map<String, String> gradesMap = {};
+      Map<String, Grade?> fullGradesMap = {};
       for (final s in fullSubjects) {
         final grades = await dbHelper.listGrades(s.subjectName);
         if (grades.isEmpty) {
           gradesMap[s.subjectName] = '–';
+          fullGradesMap[s.subjectName] = null;
         } else {
           final g = grades.first;
+          fullGradesMap[s.subjectName] = g;
           if (g.isIdoneita) {
             gradesMap[s.subjectName] = 'Idon.';
           } else {
@@ -113,6 +119,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
         setState(() {
           _uniSubjects = fullSubjects;
           _uniSubjectGrades = gradesMap;
+          _uniFullGrades = fullGradesMap;
           _weightedAverage = weightedAvg;
           _acquiredCfu = acquiredCfu;
           _totalPlannedCfu = plannedCfu;
@@ -319,6 +326,23 @@ class _StatisticsPageState extends State<StatisticsPage> {
         final isPending = gradeDisplay == '–';
         final isIdoneita = gradeDisplay == 'Idon.';
         final isLode = gradeDisplay == '30L';
+        final Grade? gradeObj = _uniFullGrades[subject.subjectName];
+        String subtitleText = '${subject.cfu} CFU';
+        if (isPending) {
+          subtitleText += ' · Non verbalizzato (Da sostenere)';
+        } else if (gradeObj != null) {
+          if (isIdoneita) {
+            subtitleText += ' · Verbalizzato: Idoneità';
+          } else {
+            subtitleText += ' · Verbalizzato: ${isLode ? "30 e Lode" : "${gradeObj.grade.toInt()}/30"}';
+          }
+          if (gradeObj.type.isNotEmpty && gradeObj.type.toLowerCase() != 'esame') {
+            subtitleText += ' · ${gradeObj.type}';
+          }
+          if (gradeObj.date > 0) {
+            subtitleText += ' (${formatIntDateToDisplay(gradeObj.date)})';
+          }
+        }
 
         final badgeColor = isPending
             ? colorScheme.surfaceContainerHighest
@@ -347,6 +371,14 @@ class _StatisticsPageState extends State<StatisticsPage> {
               borderRadius: BorderRadius.circular(14),
             ),
             child: ListTile(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => SubjectDetailPage(subjectName: subject.subjectName),
+                  ),
+                ).then((_) => _loadUniversityStats());
+              },
               contentPadding:
                   const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               leading: Container(
@@ -370,20 +402,16 @@ class _StatisticsPageState extends State<StatisticsPage> {
               title: Text(
                 subject.subjectName,
                 style: theme.textTheme.titleSmall
-                    ?.copyWith(fontWeight: FontWeight.w600),
+                    ?.copyWith(fontWeight: FontWeight.bold),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
               subtitle: Text(
-                '${subject.cfu} CFU${isPending ? ' · Da sostenere' : ''}',
+                subtitleText,
                 style: theme.textTheme.bodySmall
                     ?.copyWith(color: colorScheme.onSurfaceVariant),
               ),
-              trailing: isPending
-                  ? Icon(Icons.pending_outlined,
-                      color: colorScheme.onSurfaceVariant)
-                  : Icon(Icons.verified,
-                      color: isIdoneita ? Colors.blue : Colors.green),
+              trailing: Icon(Icons.chevron_right, color: colorScheme.outline),
             ),
           ).animate().fadeIn(delay: Duration(milliseconds: 40 * i), duration: 250.ms),
         );

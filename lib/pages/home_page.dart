@@ -344,8 +344,7 @@ class _HomePageState extends State<HomePage> {
                       Row(
                         children: [
                           _buildStatCard('Media Ponderata', _weightedAverage),
-                          _buildStatCard('Acquisiti', '$_acquiredCfu CFU'),
-                          _buildStatCard('Inseriti', '$_totalPlannedCfu CFU'),
+                          _buildStatCard('CFU Acquisiti', '$_acquiredCfu CFU'),
                           _buildStatCard('Voto Laurea', '$_degreePrediction/110', customColor: Colors.purple),
                         ],
                       ),
