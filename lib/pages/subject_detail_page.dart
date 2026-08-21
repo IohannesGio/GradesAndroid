@@ -646,8 +646,7 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
     );
   }
 
-  /// Vista Università: Scheda Singola Verbalizzazione Esame
-  Widget _buildUniversityView() {
+  /// Vista Università: Scheda Singola Verbalizzazio  Widget _buildUniversityView() {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
@@ -668,57 +667,58 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
       }
     }
 
-    return Column(
-      children: [
-        // Scheda CFU Insegnamento
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: Card(
-            elevation: 1,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(16),
-              onTap: _showEditCfuDialog,
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: colorScheme.primaryContainer,
-                        borderRadius: BorderRadius.circular(12),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.only(bottom: 24),
+      child: Column(
+        children: [
+          // Scheda CFU Insegnamento
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Card(
+              elevation: 1,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(16),
+                onTap: _showEditCfuDialog,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: colorScheme.primaryContainer,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(Icons.school, color: colorScheme.primary, size: 28),
                       ),
-                      child: Icon(Icons.school, color: colorScheme.primary, size: 28),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Crediti Formativi (CFU)', style: theme.textTheme.labelMedium),
-                          const SizedBox(height: 2),
-                          Text(
-                            '${_subjectDetails?.cfu ?? 6} CFU',
-                            style: theme.textTheme.headlineSmall?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: colorScheme.primary,
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Crediti Formativi (CFU)', style: theme.textTheme.labelMedium),
+                            const SizedBox(height: 2),
+                            Text(
+                              '${_subjectDetails?.cfu ?? 6} CFU',
+                              style: theme.textTheme.headlineSmall?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: colorScheme.primary,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                    Icon(Icons.edit_outlined, color: colorScheme.outline, size: 20),
-                  ],
+                      Icon(Icons.edit_outlined, color: colorScheme.outline, size: 20),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ).animate().fadeIn(duration: 300.ms),
-        ),
+            ).animate().fadeIn(duration: 300.ms),
+          ),
 
-        // Scheda Stato Esame Singolo
-        Expanded(
-          child: SingleChildScrollView(
+          // Scheda Stato Esame Singolo
+          Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -860,8 +860,8 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
               ],
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 

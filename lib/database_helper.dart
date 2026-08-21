@@ -305,7 +305,7 @@ class DatabaseHelper {
     if (!await targetFile.exists() && await legacyFile.exists()) {
       try {
         await legacyFile.copy(path);
-        print('Migrati i dati dal vecchio database $legacyDbName a $dbName');
+        print('Migrati i dati dal vecchio database $_legacyDbName a $dbName');
       } catch (e) {
         print('Errore durante la migrazione del file DB legacy: $e');
       }
@@ -469,10 +469,7 @@ class DatabaseHelper {
         return "Errore: file non trovato.";
       }
 
-      if (_database != null) {
-        await _database!.close();
-        _database = null;
-      }
+      await resetConnections();
 
       await sourceFile.copy(dbPath);
       return "Database importato con successo!";
@@ -2346,27 +2343,18 @@ class DatabaseHelper {
   }
 
   Future<void> close() async {
-    final db = await database;
-    await db.close();
-    _database = null;
+    await resetConnections();
     print("Database chiuso.");
   }
 
   Future<String> archiveAndStartNewYear() async {
     final db = await database;
     try {
-      // 1. Esporta il database corrente come backup
       final timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
       final backupName = 'grades_archive_$timestamp.sqlite3';
 
-      // Usa la logica interna di exportDatabase ma con nome custom se possibile,
-      // oppure usa exportDatabase standard e rinomina o lascia così.
-      // Per semplicità, usiamo exportDatabase che chiede all'utente dove salvare.
-      // Se vogliamo automatizzare, dovremmo copiare il file DB internamente.
-
-      // Copia interna automatica per preservare lo storico
+      final currentDbPath = await getDatabasePath();
       final dbFolder = await getApplicationDocumentsDirectory();
-      final currentDbPath = join(dbFolder.path, _dbName);
       final archiveFolder = Directory(join(dbFolder.path, 'archives'));
       if (!await archiveFolder.exists()) {
         await archiveFolder.create(recursive: true);
@@ -2377,22 +2365,15 @@ class DatabaseHelper {
       // 2. Cancella i dati dell'anno corrente
       await db.transaction((txn) async {
         await txn.delete('grades');
-        await txn.delete('timetable'); // Orario scolastico
+        await txn.delete('timetable');
 
-        // Verifica se esiste tabella calendar_events
         try {
           await txn.delete('calendar_events');
-        } catch (e) {
-          // Tabella potrebbe non esistere
-        }
+        } catch (e) {}
 
-        // Resetta i periodi (opzionale, o li imposta a null)
         await txn.update('periods', {'start_date': null, 'end_date': null});
-
-        // NON cancellare subject_list (materie)
       });
 
-      // Resetta anche i periodi in SharedPreferences se necessario
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('first_period_start');
       await prefs.remove('first_period_end');
@@ -2406,16 +2387,18 @@ class DatabaseHelper {
     }
   }
 
-  Future<bool> clearAllData() async {
+  /// Pulisce solo i dati del database della modalità attualmente attiva
+  Future<bool> clearCurrentModeData() async {
     final db = await database;
     try {
       await db.transaction((txn) async {
         await txn.delete('grades');
         await txn.delete('subject_list');
-        await txn.delete('periods');
-        // Reinserisci i periodi vuoti
+        try { await txn.delete('periods'); } catch (_) {}
+        try { await txn.delete('timetable'); } catch (_) {}
+        try { await txn.delete('calendar_events'); } catch (_) {}
         await txn.execute('''
-        INSERT INTO periods (name, start_date, end_date)
+        INSERT OR IGNORE INTO periods (name, start_date, end_date)
         VALUES 
         ('first_period', NULL, NULL),
         ('second_period', NULL, NULL)
@@ -2423,8 +2406,17 @@ class DatabaseHelper {
       });
       return true;
     } catch (e) {
-      print('Errore in clearAllData: $e');
+      print('Errore in clearCurrentModeData: $e');
       return false;
     }
+  }
+
+  /// Pulisce i dati di entrambi i database (Scuola e Università)
+  Future<bool> clearAllData() async {
+    bool res1 = await clearCurrentModeData();
+    try {
+      await resetConnections();
+    } catch (_) {}
+    return res1;
   }
 }
