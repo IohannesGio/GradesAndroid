@@ -6,8 +6,6 @@ import 'package:provider/provider.dart';
 import '../database_helper.dart';
 import '../providers/education_mode_provider.dart';
 import '../utils/grade_colors.dart';
-import '../utils/date_utils.dart';
-import 'subject_detail_page.dart';
 import 'settings_page.dart';
 
 class StatisticsPage extends StatefulWidget {
@@ -32,12 +30,8 @@ class _StatisticsPageState extends State<StatisticsPage> with WidgetsBindingObse
 
   // — Università
   Map<String, int> _universityGradeDistribution = {};
-  List<Subject> _uniSubjects = [];
-  Map<String, String> _uniSubjectGrades = {}; // subjectName -> voto display
-  Map<String, Grade?> _uniFullGrades = {}; // subjectName -> Grade object
   String _weightedAverage = 'N/A';
   int _acquiredCfu = 0;
-  int _totalPlannedCfu = 0;
   String _degreePrediction = 'N/A';
 
   bool _isLoading = true;
@@ -114,37 +108,10 @@ class _StatisticsPageState extends State<StatisticsPage> with WidgetsBindingObse
       );
       final countsByType = await dbHelper.getGradeCountByType(null);
 
-      // Calcola il voto display ed il Grade object per ogni insegnamento
-      Map<String, String> gradesMap = {};
-      Map<String, Grade?> fullGradesMap = {};
-      for (final s in fullSubjects) {
-        final grades = await dbHelper.listGrades(s.subjectName);
-        if (grades.isEmpty) {
-          gradesMap[s.subjectName] = '–';
-          fullGradesMap[s.subjectName] = null;
-        } else {
-          final g = grades.first;
-          fullGradesMap[s.subjectName] = g;
-          if (g.isIdoneita) {
-            gradesMap[s.subjectName] = 'Idon.';
-          } else {
-            final isLode = g.grade >= 30 &&
-                (g.note?.toLowerCase().contains('lode') ?? false);
-            gradesMap[s.subjectName] = isLode ? '30L' : g.grade.toInt().toString();
-          }
-        }
-      }
-
-      final plannedCfu = fullSubjects.fold<int>(0, (s, e) => s + e.cfu);
-
       if (mounted) {
         setState(() {
-          _uniSubjects = fullSubjects;
-          _uniSubjectGrades = gradesMap;
-          _uniFullGrades = fullGradesMap;
           _weightedAverage = weightedAvg;
           _acquiredCfu = acquiredCfu;
-          _totalPlannedCfu = plannedCfu;
           _degreePrediction = degreePred;
           _universityGradeDistribution = distribution;
           _averagesByType = averagesByType;
