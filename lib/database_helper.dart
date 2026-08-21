@@ -254,18 +254,62 @@ class DatabaseHelper {
   factory DatabaseHelper() => _instance;
   DatabaseHelper._internal();
 
-  static Database? _database;
-  static const String _dbName = "grades.sqlite3"; // Nome file DB
+  static Database? _schoolDatabase;
+  static Database? _universityDatabase;
 
+  static const String _schoolDbName = "grades_school.sqlite3";
+  static const String _universityDbName = "grades_university.sqlite3";
+  static const String _legacyDbName = "grades.sqlite3";
+
+  /// Restituisce la connessione database attiva in base alla modalità selezionata (Scuola o Università).
   Future<Database> get database async {
-    if (_database != null) return _database!;
-    _database = await _initDatabase();
-    return _database!;
+    final prefs = await SharedPreferences.getInstance();
+    final modeStr = prefs.getString('education_mode') ?? 'school';
+    final isUni = modeStr == 'university';
+
+    if (isUni) {
+      if (_universityDatabase != null && _universityDatabase!.isOpen) {
+        return _universityDatabase!;
+      }
+      _universityDatabase = await _initDatabaseForName(_universityDbName);
+      return _universityDatabase!;
+    } else {
+      if (_schoolDatabase != null && _schoolDatabase!.isOpen) {
+        return _schoolDatabase!;
+      }
+      _schoolDatabase = await _initDatabaseForName(_schoolDbName);
+      return _schoolDatabase!;
+    }
   }
 
-  Future<Database> _initDatabase() async {
+  Future<void> resetConnections() async {
+    if (_schoolDatabase != null && _schoolDatabase!.isOpen) {
+      await _schoolDatabase!.close();
+      _schoolDatabase = null;
+    }
+    if (_universityDatabase != null && _universityDatabase!.isOpen) {
+      await _universityDatabase!.close();
+      _universityDatabase = null;
+    }
+  }
+
+  Future<Database> _initDatabaseForName(String dbName) async {
     Directory documentsDirectory = await getApplicationDocumentsDirectory();
-    String path = join(documentsDirectory.path, _dbName);
+    String path = join(documentsDirectory.path, dbName);
+    String legacyPath = join(documentsDirectory.path, _legacyDbName);
+
+    // Se il nuovo file DB non esiste ma esiste il vecchio file legacy 'grades.sqlite3', copialo come punto di partenza
+    final targetFile = File(path);
+    final legacyFile = File(legacyPath);
+
+    if (!await targetFile.exists() && await legacyFile.exists()) {
+      try {
+        await legacyFile.copy(path);
+        print('Migrati i dati dal vecchio database $legacyDbName a $dbName');
+      } catch (e) {
+        print('Errore durante la migrazione del file DB legacy: $e');
+      }
+    }
 
     final db = await openDatabase(
       path,

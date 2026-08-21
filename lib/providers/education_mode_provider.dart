@@ -142,12 +142,15 @@ class EducationModeProvider extends ChangeNotifier {
   }
 
   Future<void> setEducationMode(EducationMode newMode, {required bool resetData}) async {
-    if (resetData) {
-      await DatabaseHelper().clearAllData();
-    }
-
     final prefs = await SharedPreferences.getInstance();
     _mode = newMode;
+    await prefs.setString(_keyEducationMode, newMode == EducationMode.university ? 'university' : 'school');
+
+    await DatabaseHelper().resetConnections();
+
+    if (resetData) {
+      await DatabaseHelper().clearCurrentModeData();
+    }
 
     if (newMode == EducationMode.university) {
       _passingGrade = 18.0;
@@ -159,7 +162,6 @@ class EducationModeProvider extends ChangeNotifier {
       _targetCfu = 0;
     }
 
-    await prefs.setString(_keyEducationMode, newMode == EducationMode.university ? 'university' : 'school');
     await prefs.setDouble(_keyPassingGrade, _passingGrade);
     await prefs.setDouble(_keyMaxGrade, _maxGrade);
     await prefs.setInt(_keyTargetCfu, _targetCfu);
