@@ -33,6 +33,8 @@ class _StatisticsPageState extends State<StatisticsPage> {
   String _weightedAverage = 'N/A';
   int _acquiredCfu = 0;
   String _degreePrediction = 'N/A';
+  // Andamento media ponderata nel tempo: lista ordinata per data di {x: esame_n, y: media}
+  List<FlSpot> _uniAverageTrend = [];
 
   bool _isLoading = true;
   double _passingGrade = 6.0;
@@ -87,6 +89,23 @@ class _StatisticsPageState extends State<StatisticsPage> {
       );
       final countsByType = await dbHelper.getGradeCountByType(null);
 
+      // Calcola andamento media ponderata nel tempo
+      final List<FlSpot> trendSpots = [];
+      final allGrades = await dbHelper.getAllGradesSortedByDate();
+      final lodeVal = modeProvider.getLodeNumericValue();
+      double runningSum = 0;
+      double runningWeight = 0;
+      int examIndex = 0;
+      for (final g in allGrades) {
+        if (!g.isIdoneita && g.weight > 0) {
+          final val = g.isLode ? lodeVal : g.grade;
+          runningSum += val * g.weight;
+          runningWeight += g.weight;
+          examIndex++;
+          trendSpots.add(FlSpot(examIndex.toDouble(), runningSum / runningWeight));
+        }
+      }
+
       if (mounted) {
         setState(() {
           _weightedAverage = weightedAvg;
@@ -95,6 +114,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
           _universityGradeDistribution = distribution;
           _averagesByType = averagesByType;
           _countsByType = countsByType;
+          _uniAverageTrend = trendSpots;
           _isLoading = false;
         });
       }
@@ -283,6 +303,112 @@ class _StatisticsPageState extends State<StatisticsPage> {
         _buildStatCard('CFU Acquisiti', '$_acquiredCfu CFU'),
         _buildStatCard('Voto Laurea', '$_degreePrediction/110', customColor: Colors.purple),
       ],
+    );
+  }
+
+  Widget _buildUniAverageTrendChart() {
+    if (_uniAverageTrend.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.all(24),
+        child: Center(
+          child: Text(
+            'Nessun esame con voto numerico registrato per tracciare l\'andamento.',
+            style: TextStyle(color: Theme.of(context).disabledColor),
+            textAlign: TextAlign.center,
+          ),
+        ),
+      );
+    }
+
+    // Calcola il range Y in base ai punti per un grafico bilanciato ed elegante
+    double minVal = _uniAverageTrend.map((e) => e.y).reduce(min);
+    double maxVal = _uniAverageTrend.map((e) => e.y).reduce(max);
+    double minY = max(18.0, (minVal - 1.0).floorToDouble());
+    double maxY = min(31.0, (maxVal + 1.0).ceilToDouble());
+    if (minY >= maxY) maxY = minY + 2.0;
+
+    return AspectRatio(
+      aspectRatio: 1.6,
+      child: Padding(
+        padding: const EdgeInsets.only(right: 18, left: 8, top: 24, bottom: 12),
+        child: LineChart(
+          LineChartData(
+            lineTouchData: LineTouchData(
+              touchTooltipData: LineTouchTooltipData(
+                getTooltipColor: (_) => Colors.black87,
+                getTooltipItems: (touchedSpots) {
+                  return touchedSpots.map((spot) {
+                    return LineTooltipItem(
+                      'Esame #${spot.x.toInt()}: ${spot.y.toStringAsFixed(2)}',
+                      const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                    );
+                  }).toList();
+                },
+              ),
+            ),
+            gridData: const FlGridData(show: true),
+            titlesData: FlTitlesData(
+              bottomTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  reservedSize: 28,
+                  interval: 1,
+                  getTitlesWidget: (value, meta) {
+                    final idx = value.toInt();
+                    if (idx < 1 || idx > _uniAverageTrend.length) {
+                      return const SizedBox.shrink();
+                    }
+                    return SideTitleWidget(
+                      meta: meta,
+                      space: 4,
+                      child: Text(
+                        '#$idx',
+                        style: const TextStyle(fontSize: 10),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              leftTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  reservedSize: 32,
+                  getTitlesWidget: (value, meta) {
+                    return Text(
+                      value.toStringAsFixed(1),
+                      style: const TextStyle(fontSize: 10),
+                    );
+                  },
+                ),
+              ),
+              topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            ),
+            borderData: FlBorderData(
+              show: true,
+              border: Border.all(color: const Color(0xff37434d), width: 1),
+            ),
+            minX: 1,
+            maxX: max(1, _uniAverageTrend.length.toDouble()),
+            minY: minY,
+            maxY: maxY,
+            lineBarsData: [
+              LineChartBarData(
+                spots: _uniAverageTrend,
+                isCurved: true,
+                color: Theme.of(context).colorScheme.primary,
+                barWidth: 3,
+                isStrokeCapRound: true,
+                dotData: const FlDotData(show: true),
+                belowBarData: BarAreaData(
+                  show: true,
+                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -781,7 +907,20 @@ class _StatisticsPageState extends State<StatisticsPage> {
         const Divider(thickness: 1),
         const SizedBox(height: 8),
 
-        // 2. Grafico distribuzione voti
+        // 2. Andamento della Media Ponderata
+        Text(
+          'Andamento della Media Ponderata',
+          style: Theme.of(context).textTheme.titleLarge,
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 12),
+        _buildUniAverageTrendChart(),
+
+        const SizedBox(height: 24),
+        const Divider(thickness: 1),
+        const SizedBox(height: 8),
+
+        // 3. Grafico distribuzione voti
         Text(
           'Distribuzione Voti (18 – 30L)',
           style: Theme.of(context).textTheme.titleLarge,
@@ -803,7 +942,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
         const Divider(thickness: 1),
         const SizedBox(height: 8),
 
-        // 3. Analisi per Tipologia Esame
+        // 4. Analisi per Tipologia Esame
         Text(
           'Analisi per Tipologia Esame',
           style: Theme.of(context).textTheme.titleLarge,

@@ -116,6 +116,14 @@ class Grade {
         lowerNote.contains('pass');
   }
 
+  /// Indica se il voto è "30 e Lode" — la nota è salvata come '30L' o '30L - ...' 
+  /// oppure (legacy) contiene 'lode'
+  bool get isLode {
+    if (grade < 30) return false;
+    final lowerNote = note?.toLowerCase() ?? '';
+    return lowerNote.contains('30l') || lowerNote.contains('lode');
+  }
+
   @override
   String toString() {
     return 'Grade{id: $id, subjectName: $subjectName, grade: $grade, date: $date, weight: $weight, type: $type}';
@@ -1758,7 +1766,7 @@ class DatabaseHelper {
             // Le Idoneità NON sono voti numerici e vengono escluse dal calcolo della media ponderata
             if (g.weight > 0 && !g.isIdoneita) {
               double gradeValue = g.grade;
-              if (gradeValue >= 30 && (g.note?.toLowerCase().contains('lode') ?? false)) {
+              if (g.isLode) {
                 gradeValue = lodeNumericValue;
               }
               subjectAvgSum += gradeValue * g.weight;
@@ -1819,7 +1827,7 @@ class DatabaseHelper {
       for (var s in subjects) {
         final grades = await listGrades(s.subjectName);
         for (var g in grades) {
-          if (g.grade >= 30 && (g.note?.toLowerCase().contains('lode') ?? false)) {
+          if (g.isLode) {
             lodeCount++;
           }
         }
@@ -1828,6 +1836,18 @@ class DatabaseHelper {
     }
 
     return degreeBase.toStringAsFixed(2);
+  }
+
+  /// Restituisce tutti i voti ordinati per data (per calcolare l'andamento della media)
+  Future<List<Grade>> getAllGradesSortedByDate() async {
+    final db = await database;
+    try {
+      final maps = await db.query('grades', orderBy: 'date ASC');
+      return maps.map((m) => Grade.fromMap(m)).toList();
+    } catch (e) {
+      print('Errore in getAllGradesSortedByDate: $e');
+      return [];
+    }
   }
 
   /// Restituisce la distribuzione dei voti da 18 a 30L per l'Università
@@ -1844,8 +1864,7 @@ class DatabaseHelper {
         final grade = Grade.fromMap(map);
         // Le Idoneità NON sono voti numerici e vengono escluse dal grafico di distribuzione voti
         if (!grade.isIdoneita && grade.grade >= 18) {
-          final isLode = grade.grade >= 30 && (grade.note?.toLowerCase().contains('lode') ?? false);
-          if (isLode) {
+          if (grade.isLode) {
             distribution['30L'] = (distribution['30L'] ?? 0) + 1;
           } else {
             final key = grade.grade.floor().toString();
@@ -1958,10 +1977,7 @@ class DatabaseHelper {
         if (g.weight > 0 && !g.isIdoneita) {
           final normType = g.type.trim();
           if (normType.isEmpty) continue;
-          double gradeVal = g.grade;
-          if (gradeVal >= 30 && (g.note?.toLowerCase().contains('lode') ?? false)) {
-            gradeVal = lodeNumericValue;
-          }
+          double gradeVal = g.isLode ? lodeNumericValue : g.grade;
           typeSum[normType] = (typeSum[normType] ?? 0.0) + (gradeVal * g.weight);
           typeWeightSum[normType] = (typeWeightSum[normType] ?? 0.0) + g.weight;
         }
@@ -1995,10 +2011,7 @@ class DatabaseHelper {
         if (g.weight > 0 && !g.isIdoneita) {
           final normType = g.type.trim();
           if (normType.isEmpty) continue;
-          double gradeVal = g.grade;
-          if (gradeVal >= 30 && (g.note?.toLowerCase().contains('lode') ?? false)) {
-            gradeVal = lodeNumericValue;
-          }
+          double gradeVal = g.isLode ? lodeNumericValue : g.grade;
           typeSum[normType] = (typeSum[normType] ?? 0.0) + (gradeVal * g.weight);
           typeWeightSum[normType] = (typeWeightSum[normType] ?? 0.0) + g.weight;
         }
