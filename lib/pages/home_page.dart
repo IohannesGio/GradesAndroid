@@ -130,9 +130,7 @@ class _HomePageState extends State<HomePage> {
           double sum = 0;
           double wSum = 0;
           for (var g in grades) {
-            final isLode = g.grade >= 30 &&
-                (g.note?.toLowerCase().contains('lode') ?? false);
-            final gradeValue = isLode
+            final gradeValue = g.isLode
                 ? modeProvider.getLodeNumericValue()
                 : g.grade;
             sum += gradeValue * g.weight;
@@ -257,25 +255,19 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildStatCard(String label, String value, {Color? customColor}) {
     Color getColorForValue(String label, String value) {
-      if (customColor != null) return customColor.withOpacity(0.2);
-      double? val = double.tryParse(value);
-      if (val == null) return Colors.grey.withOpacity(0.2);
-      if (label == 'Obiettivo' || label == 'CFU Conseguiti') {
-        return Colors.blue.withOpacity(0.2);
+      if (customColor != null) return customColor.withValues(alpha: 0.2);
+      if (label == 'Obiettivo' || label.contains('CFU')) {
+        return GradeColors.cfuBackground;
       }
-      return val >= _passingGrade
-          ? Colors.green.withOpacity(0.2)
-          : Colors.red.withOpacity(0.2);
+      return GradeColors.background(value, passingGrade: _passingGrade);
     }
 
     Color getTextColorForBackground(String label, String value) {
       if (customColor != null) return customColor;
-      double? val = double.tryParse(value);
-      if (val == null) return Colors.grey;
-      if (label == 'Obiettivo' || label == 'CFU Conseguiti') {
-        return Colors.blue;
+      if (label == 'Obiettivo' || label.contains('CFU')) {
+        return GradeColors.cfuForeground;
       }
-      return val >= _passingGrade ? Colors.green : Colors.red;
+      return GradeColors.foreground(value, passingGrade: _passingGrade);
     }
 
     return Expanded(

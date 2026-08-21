@@ -921,16 +921,14 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: g.grade >= _passingGrade
-                              ? Colors.green.withValues(alpha: 0.2)
-                              : Colors.red.withValues(alpha: 0.2),
+                          color: GradeColors.background(g.grade.toString(), passingGrade: _passingGrade),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
                           g.grade.toString(),
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            color: g.grade >= _passingGrade ? Colors.green : Colors.red,
+                            color: GradeColors.foreground(g.grade.toString(), passingGrade: _passingGrade),
                           ),
                         ),
                       ),

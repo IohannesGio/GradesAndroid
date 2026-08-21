@@ -34,8 +34,9 @@ class _StatisticsPageState extends State<StatisticsPage> {
   String _arithmeticAverage = 'N/A';
   int _acquiredCfu = 0;
   String _degreePrediction = 'N/A';
-  // Andamento media ponderata nel tempo: lista ordinata per data di {x: esame_n, y: media}
+  // Andamento medie nel tempo: liste ordinate per data di {x: esame_n, y: media}
   List<FlSpot> _uniAverageTrend = [];
+  List<FlSpot> _uniArithmeticTrend = [];
 
   bool _isLoading = true;
   double _passingGrade = 6.0;
@@ -51,12 +52,12 @@ class _StatisticsPageState extends State<StatisticsPage> {
   Future<void> _loadInitialData() async {
     final settings = await SettingsPage.loadPassingAndMaxGrades();
     if (!mounted) return;
+    final modeProvider = Provider.of<EducationModeProvider>(context, listen: false);
     setState(() {
-      _passingGrade = settings['passing_grade'] ?? 6.0;
-      _maxGrade = settings['max_grade'] ?? 10.0;
+      _passingGrade = modeProvider.isUniversity ? 18.0 : (settings['passing_grade'] ?? 6.0);
+      _maxGrade = modeProvider.isUniversity ? 30.0 : (settings['max_grade'] ?? 10.0);
     });
 
-    final modeProvider = Provider.of<EducationModeProvider>(context, listen: false);
     if (modeProvider.isUniversity) {
       await _loadUniversityStats();
     } else {
@@ -93,20 +94,32 @@ class _StatisticsPageState extends State<StatisticsPage> {
       );
       final countsByType = await dbHelper.getGradeCountByType(null);
 
-      // Calcola andamento media ponderata nel tempo
-      final List<FlSpot> trendSpots = [];
+      // Calcola andamento media ponderata ed aritmetica nel tempo
+      final List<FlSpot> weightedSpots = [];
+      final List<FlSpot> arithmeticSpots = [];
+      final fullSubjects = await dbHelper.listSubjectsFull();
+      final Map<String, int> subjectCfuMap = {
+        for (var s in fullSubjects) s.subjectName.toUpperCase(): s.cfu
+      };
+
       final allGrades = await dbHelper.getAllGradesSortedByDate();
       final lodeVal = modeProvider.getLodeNumericValue();
-      double runningSum = 0;
+      double runningWeightedSum = 0;
       double runningWeight = 0;
+      double runningArithmeticSum = 0;
       int examIndex = 0;
+
       for (final g in allGrades) {
-        if (!g.isIdoneita && g.weight > 0) {
+        if (!g.isIdoneita && g.grade >= 18) {
+          final cfu = subjectCfuMap[g.subjectName.toUpperCase()] ?? 6;
+          if (cfu <= 0) continue;
           final val = g.isLode ? lodeVal : g.grade;
-          runningSum += val * g.weight;
-          runningWeight += g.weight;
+          runningWeightedSum += val * cfu;
+          runningWeight += cfu;
+          runningArithmeticSum += val;
           examIndex++;
-          trendSpots.add(FlSpot(examIndex.toDouble(), runningSum / runningWeight));
+          weightedSpots.add(FlSpot(examIndex.toDouble(), runningWeightedSum / runningWeight));
+          arithmeticSpots.add(FlSpot(examIndex.toDouble(), runningArithmeticSum / examIndex));
         }
       }
 
@@ -119,7 +132,8 @@ class _StatisticsPageState extends State<StatisticsPage> {
           _universityGradeDistribution = distribution;
           _averagesByType = averagesByType;
           _countsByType = countsByType;
-          _uniAverageTrend = trendSpots;
+          _uniAverageTrend = weightedSpots;
+          _uniArithmeticTrend = arithmeticSpots;
           _isLoading = false;
         });
       }
@@ -252,15 +266,17 @@ class _StatisticsPageState extends State<StatisticsPage> {
 
   Widget _buildStatCard(String label, String value, {Color? customColor}) {
     Color getColorForValue(String label, String value) {
+      if (customColor != null) return customColor.withValues(alpha: 0.2);
       if (label == 'Obiettivo' || label.contains('CFU')) {
-        return Colors.blue.withValues(alpha: 0.2);
+        return GradeColors.cfuBackground;
       }
       return GradeColors.background(value, passingGrade: _passingGrade);
     }
 
     Color getTextColorForBackground(String label, String value) {
+      if (customColor != null) return customColor;
       if (label == 'Obiettivo' || label.contains('CFU')) {
-        return Colors.blue;
+        return GradeColors.cfuForeground;
       }
       return GradeColors.foreground(value, passingGrade: _passingGrade);
     }
@@ -336,94 +352,127 @@ class _StatisticsPageState extends State<StatisticsPage> {
     }
 
     // Calcola il range Y in base ai punti per un grafico bilanciato ed elegante
-    double minVal = _uniAverageTrend.map((e) => e.y).reduce(min);
-    double maxVal = _uniAverageTrend.map((e) => e.y).reduce(max);
+    final allY = [..._uniAverageTrend.map((e) => e.y), ..._uniArithmeticTrend.map((e) => e.y)];
+    double minVal = allY.reduce(min);
+    double maxVal = allY.reduce(max);
     double minY = max(18.0, (minVal - 1.0).floorToDouble());
     double maxY = min(31.0, (maxVal + 1.0).ceilToDouble());
     if (minY >= maxY) maxY = minY + 2.0;
 
-    return AspectRatio(
-      aspectRatio: 1.6,
-      child: Padding(
-        padding: const EdgeInsets.only(right: 18, left: 8, top: 24, bottom: 12),
-        child: LineChart(
-          LineChartData(
-            lineTouchData: LineTouchData(
-              touchTooltipData: LineTouchTooltipData(
-                getTooltipColor: (_) => Colors.black87,
-                getTooltipItems: (touchedSpots) {
-                  return touchedSpots.map((spot) {
-                    return LineTooltipItem(
-                      'Esame #${spot.x.toInt()}: ${spot.y.toStringAsFixed(2)}',
-                      const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                    );
-                  }).toList();
-                },
-              ),
-            ),
-            gridData: const FlGridData(show: true),
-            titlesData: FlTitlesData(
-              bottomTitles: AxisTitles(
-                sideTitles: SideTitles(
-                  showTitles: true,
-                  reservedSize: 28,
-                  interval: 1,
-                  getTitlesWidget: (value, meta) {
-                    final idx = value.toInt();
-                    if (idx < 1 || idx > _uniAverageTrend.length) {
-                      return const SizedBox.shrink();
-                    }
-                    return SideTitleWidget(
-                      meta: meta,
-                      space: 4,
-                      child: Text(
-                        '#$idx',
-                        style: const TextStyle(fontSize: 10),
-                      ),
-                    );
-                  },
+    final primaryColor = Theme.of(context).colorScheme.primary;
+    final secondaryColor = Colors.teal;
+
+    return Column(
+      children: [
+        AspectRatio(
+          aspectRatio: 1.6,
+          child: Padding(
+            padding: const EdgeInsets.only(right: 18, left: 8, top: 24, bottom: 12),
+            child: LineChart(
+              LineChartData(
+                lineTouchData: LineTouchData(
+                  touchTooltipData: LineTouchTooltipData(
+                    getTooltipColor: (_) => Colors.black87,
+                    getTooltipItems: (touchedSpots) {
+                      return touchedSpots.map((spot) {
+                        final isWeighted = spot.bar.color == primaryColor;
+                        final label = isWeighted ? 'Ponderata' : 'Aritmetica';
+                        return LineTooltipItem(
+                          '$label: ${spot.y.toStringAsFixed(2)}',
+                          TextStyle(
+                            color: isWeighted ? Colors.lightBlueAccent : Colors.tealAccent,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        );
+                      }).toList();
+                    },
+                  ),
                 ),
-              ),
-              leftTitles: AxisTitles(
-                sideTitles: SideTitles(
-                  showTitles: true,
-                  reservedSize: 32,
-                  getTitlesWidget: (value, meta) {
-                    return Text(
-                      value.toStringAsFixed(1),
-                      style: const TextStyle(fontSize: 10),
-                    );
-                  },
+                gridData: const FlGridData(show: true),
+                titlesData: FlTitlesData(
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 28,
+                      interval: 1,
+                      getTitlesWidget: (value, meta) {
+                        final idx = value.toInt();
+                        if (idx < 1 || idx > _uniAverageTrend.length) {
+                          return const SizedBox.shrink();
+                        }
+                        return SideTitleWidget(
+                          meta: meta,
+                          space: 4,
+                          child: Text(
+                            '#$idx',
+                            style: const TextStyle(fontSize: 10),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  leftTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 32,
+                      getTitlesWidget: (value, meta) {
+                        return Text(
+                          value.toStringAsFixed(1),
+                          style: const TextStyle(fontSize: 10),
+                        );
+                      },
+                    ),
+                  ),
+                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                 ),
-              ),
-              topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-              rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            ),
-            borderData: FlBorderData(
-              show: true,
-              border: Border.all(color: const Color(0xff37434d), width: 1),
-            ),
-            minX: 1,
-            maxX: max(1, _uniAverageTrend.length.toDouble()),
-            minY: minY,
-            maxY: maxY,
-            lineBarsData: [
-              LineChartBarData(
-                spots: _uniAverageTrend,
-                isCurved: true,
-                color: Theme.of(context).colorScheme.primary,
-                barWidth: 3,
-                isStrokeCapRound: true,
-                dotData: const FlDotData(show: true),
-                belowBarData: BarAreaData(
+                borderData: FlBorderData(
                   show: true,
-                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
+                  border: Border.all(color: const Color(0xff37434d), width: 1),
                 ),
+                minX: 1,
+                maxX: max(1, _uniAverageTrend.length.toDouble()),
+                minY: minY,
+                maxY: maxY,
+                lineBarsData: [
+                  LineChartBarData(
+                    spots: _uniAverageTrend,
+                    isCurved: true,
+                    color: primaryColor,
+                    barWidth: 3,
+                    isStrokeCapRound: true,
+                    dotData: const FlDotData(show: true),
+                    belowBarData: BarAreaData(
+                      show: true,
+                      color: primaryColor.withValues(alpha: 0.10),
+                    ),
+                  ),
+                  LineChartBarData(
+                    spots: _uniArithmeticTrend,
+                    isCurved: true,
+                    color: secondaryColor,
+                    barWidth: 3,
+                    isStrokeCapRound: true,
+                    dotData: const FlDotData(show: true),
+                    belowBarData: BarAreaData(
+                      show: false,
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
-      ),
+        const SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _buildLegendRow(primaryColor, 'Media Ponderata'),
+            const SizedBox(width: 24),
+            _buildLegendRow(secondaryColor, 'Media Aritmetica'),
+          ],
+        ),
+      ],
     );
   }
 
