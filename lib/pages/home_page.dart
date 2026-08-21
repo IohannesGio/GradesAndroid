@@ -27,6 +27,7 @@ class _HomePageState extends State<HomePage> {
   Map<String, String> _uniSubjectAverages = {};
   String _weightedAverage = 'N/A';
   int _acquiredCfu = 0;
+  int _totalPlannedCfu = 0;
   String _degreePrediction = 'N/A';
 
   double _passingGrade = 6.0;
@@ -136,12 +137,15 @@ class _HomePageState extends State<HomePage> {
       }
     }
 
+    final plannedCfuSum = fullSubjects.fold<int>(0, (sum, s) => sum + s.cfu);
+
     if (mounted) {
       setState(() {
         _uniSubjects = fullSubjects;
         _uniSubjectAverages = averagesMap;
         _weightedAverage = weightedAvg;
         _acquiredCfu = totalCfu;
+        _totalPlannedCfu = plannedCfuSum;
         _degreePrediction = degreePred;
       });
     }
@@ -334,15 +338,15 @@ class _HomePageState extends State<HomePage> {
                 ? Column(
                     children: [
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
                           _buildStatCard('Media Ponderata', _weightedAverage),
-                          _buildStatCard('CFU Conseguiti', '$_acquiredCfu / ${modeProvider.targetCfu}'),
-                          _buildStatCard('Voto Laurea', '$_degreePrediction / 110', customColor: Colors.purple),
+                          _buildStatCard('Acquisiti', '$_acquiredCfu CFU'),
+                          _buildStatCard('Inseriti', '$_totalPlannedCfu CFU'),
+                          _buildStatCard('Voto Laurea', '$_degreePrediction/110', customColor: Colors.purple),
                         ],
                       ),
                       const SizedBox(height: 12),
-                      // Progress bar for CFU
+                      // Progress bars for CFU
                       if (modeProvider.targetCfu > 0)
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -353,7 +357,7 @@ class _HomePageState extends State<HomePage> {
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text(
-                                    'Progresso CFU Laurea',
+                                    'Progresso CFU Laurea (Verbalizzati: $_acquiredCfu | Inseriti: $_totalPlannedCfu / ${modeProvider.targetCfu} CFU)',
                                     style: Theme.of(context).textTheme.bodySmall,
                                   ),
                                   Text(
@@ -362,11 +366,26 @@ class _HomePageState extends State<HomePage> {
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 4),
-                              LinearProgressIndicator(
-                                value: (_acquiredCfu / modeProvider.targetCfu).clamp(0.0, 1.0),
-                                borderRadius: BorderRadius.circular(6),
-                                minHeight: 8,
+                              const SizedBox(height: 6),
+                              Stack(
+                                children: [
+                                  // Total planned progress (lighter)
+                                  LinearProgressIndicator(
+                                    value: (_totalPlannedCfu / modeProvider.targetCfu).clamp(0.0, 1.0),
+                                    backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
+                                    borderRadius: BorderRadius.circular(6),
+                                    minHeight: 8,
+                                  ),
+                                  // Acquired progress (solid)
+                                  LinearProgressIndicator(
+                                    value: (_acquiredCfu / modeProvider.targetCfu).clamp(0.0, 1.0),
+                                    backgroundColor: Colors.transparent,
+                                    color: Theme.of(context).colorScheme.primary,
+                                    borderRadius: BorderRadius.circular(6),
+                                    minHeight: 8,
+                                  ),
+                                ],
                               ),
                             ],
                           ),
@@ -591,11 +610,13 @@ class _HomePageState extends State<HomePage> {
     final result = await showSmartImportDialog(context);
     if (result != null && result.selectedExams.isNotEmpty) {
       int importedCount = 0;
+      int importedCfu = 0;
       int duplicateCount = 0;
       for (final exam in result.selectedExams) {
         try {
           await dbHelper.addSubject(exam.title, cfu: exam.cfu);
           importedCount++;
+          importedCfu += exam.cfu;
         } catch (e) {
           if (e.toString().contains('duplicate')) {
             duplicateCount++;
@@ -604,7 +625,7 @@ class _HomePageState extends State<HomePage> {
       }
       _loadData();
       if (mounted) {
-        String message = '$importedCount esami importati con successo!';
+        String message = '$importedCount esami importati con successo ($importedCfu CFU totali aggiunti al tuo piano!).';
         if (duplicateCount > 0) {
           message += ' ($duplicateCount duplicati ignorati)';
         }

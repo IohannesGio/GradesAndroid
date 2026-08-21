@@ -522,6 +522,7 @@ class _DiaryPageState extends State<DiaryPage> {
                   Align(
                     alignment: Alignment.centerRight,
                     child: FloatingActionButton.extended(
+                      heroTag: 'diary_add_lesson_fab',
                       onPressed: () => _showAddEditLessonDialog(),
                       icon: const Icon(Icons.add),
                       label: const Text('Aggiungi Lezione'),
@@ -559,6 +560,7 @@ class _DiaryPageState extends State<DiaryPage> {
                   Align(
                     alignment: Alignment.centerRight,
                     child: FloatingActionButton.extended(
+                      heroTag: 'diary_add_event_fab',
                       onPressed: () => _showAddEditEventDialog(),
                       icon: const Icon(Icons.event),
                       label: Text(isUni ? 'Aggiungi Appello' : 'Aggiungi Evento'),

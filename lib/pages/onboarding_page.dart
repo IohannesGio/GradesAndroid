@@ -640,25 +640,58 @@ class _OnboardingPageState extends State<OnboardingPage> {
 
           const SizedBox(height: 16),
 
-          if (isUni)
-            FilledButton.tonalIcon(
-              onPressed: () async {
-                final result = await showSmartImportDialog(context);
-                if (result != null && result.selectedExams.isNotEmpty) {
-                  setState(() {
-                    for (final exam in result.selectedExams) {
-                      _initialSubjects.add(exam.title);
-                    }
-                  });
-                }
-              },
-              icon: const Icon(Icons.auto_awesome, size: 18),
-              label: const Text('Importa da Testo (IA)'),
-              style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-              ),
+          if (isUni) ...[
+            Row(
+              children: [
+                Expanded(
+                  child: FilledButton.tonalIcon(
+                    onPressed: () async {
+                      final result = await showSmartImportDialog(context);
+                      if (result != null && result.selectedExams.isNotEmpty) {
+                        setState(() {
+                          for (final exam in result.selectedExams) {
+                            _initialSubjects.add(exam.title);
+                          }
+                        });
+                      }
+                    },
+                    icon: const Icon(Icons.auto_awesome, size: 18),
+                    label: const Text('Importa da Testo (IA)'),
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                  ),
+                ),
+              ],
             ).animate().fadeIn(delay: 150.ms),
+            if (_initialSubjects.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: colorScheme.primaryContainer.withValues(alpha: 0.6),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Esami aggiunti: ${_initialSubjects.length}',
+                      style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
+                    ),
+                    Text(
+                      '~${_initialSubjects.length * 6} CFU stimati',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: colorScheme.primary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ).animate().fadeIn(),
+            ],
+          ],
 
           const SizedBox(height: 16),
 
