@@ -267,12 +267,40 @@ class DatabaseHelper {
     Directory documentsDirectory = await getApplicationDocumentsDirectory();
     String path = join(documentsDirectory.path, _dbName);
 
-    return await openDatabase(
+    final db = await openDatabase(
       path,
-      version: 3,
+      version: 4,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
+    await _ensureSchemaUpToDate(db);
+    return db;
+  }
+
+  Future<void> _ensureSchemaUpToDate(Database db) async {
+    try {
+      final gradesInfo = await db.rawQuery('PRAGMA table_info(grades)');
+      bool hasNote = gradesInfo.any((column) => column['name'] == 'note');
+      if (!hasNote) {
+        await db.execute('ALTER TABLE grades ADD COLUMN note TEXT');
+      }
+    } catch (e) {
+      print('Schema migration error for grades note column: $e');
+    }
+
+    try {
+      final subjectInfo = await db.rawQuery('PRAGMA table_info(subject_list)');
+      bool hasCfu = subjectInfo.any((column) => column['name'] == 'cfu');
+      if (!hasCfu) {
+        await db.execute('ALTER TABLE subject_list ADD COLUMN cfu INTEGER DEFAULT 6');
+      }
+      bool hasStatus = subjectInfo.any((column) => column['name'] == 'status');
+      if (!hasStatus) {
+        await db.execute("ALTER TABLE subject_list ADD COLUMN status TEXT DEFAULT 'planned'");
+      }
+    } catch (e) {
+      print('Schema migration error for subject_list columns: $e');
+    }
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -339,19 +367,7 @@ class DatabaseHelper {
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    if (oldVersion < 2) {
-      try {
-        await db.execute('ALTER TABLE grades ADD COLUMN note TEXT');
-      } catch (_) {}
-    }
-    if (oldVersion < 3) {
-      try {
-        await db.execute('ALTER TABLE subject_list ADD COLUMN cfu INTEGER DEFAULT 6');
-      } catch (_) {}
-      try {
-        await db.execute("ALTER TABLE subject_list ADD COLUMN status TEXT DEFAULT 'planned'");
-      } catch (_) {}
-    }
+    await _ensureSchemaUpToDate(db);
   }
 
   // ---------- GET FUNCTIONS ----------
@@ -1812,8 +1828,26 @@ class DatabaseHelper {
       );
       return true;
     } catch (e) {
-      print('Errore in addGrade: $e');
-      return false;
+      print('Errore in addGrade, eseguiamo verifica schema: $e');
+      await _ensureSchemaUpToDate(db);
+      try {
+        final gradeObj = Grade(
+            subjectName: subjectName.toUpperCase(),
+            grade: grade,
+            date: date,
+            weight: weight,
+            type: type,
+            note: note);
+        await db.insert(
+          'grades',
+          gradeObj.toMap()..remove('id'),
+          conflictAlgorithm: ConflictAlgorithm.ignore,
+        );
+        return true;
+      } catch (retryError) {
+        print('Errore definitivo in addGrade: $retryError');
+        return false;
+      }
     }
   }
 
