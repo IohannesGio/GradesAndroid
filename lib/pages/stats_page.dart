@@ -17,7 +17,7 @@ class StatisticsPage extends StatefulWidget {
   State<StatisticsPage> createState() => _StatisticsPageState();
 }
 
-class _StatisticsPageState extends State<StatisticsPage> {
+class _StatisticsPageState extends State<StatisticsPage> with WidgetsBindingObserver {
   final dbHelper = DatabaseHelper();
 
   // — Scuola
@@ -48,6 +48,26 @@ class _StatisticsPageState extends State<StatisticsPage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _loadInitialData();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _loadInitialData();
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
     _loadInitialData();
   }
 
@@ -89,7 +109,9 @@ class _StatisticsPageState extends State<StatisticsPage> {
             : 0.0,
       );
       final distribution = await dbHelper.getUniversityGradeDistribution();
-      final averagesByType = await dbHelper.getOverallAveragesByType();
+      final averagesByType = await dbHelper.getOverallAveragesByType(
+        lodeNumericValue: modeProvider.getLodeNumericValue(),
+      );
       final countsByType = await dbHelper.getGradeCountByType(null);
 
       // Calcola il voto display ed il Grade object per ogni insegnamento
@@ -257,167 +279,68 @@ class _StatisticsPageState extends State<StatisticsPage> {
 
   // ─── Widget: Università ───────────────────────────────────────────────────
 
-  Widget _buildUniSummaryCards(EducationModeProvider modeProvider) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+  Widget _buildStatCard(String label, String value, {Color? customColor}) {
+    Color getColorForValue(String label, String value) {
+      if (label == 'Obiettivo' || label.contains('CFU')) {
+        return Colors.blue.withValues(alpha: 0.2);
+      }
+      return GradeColors.background(value, passingGrade: _passingGrade);
+    }
 
-    Widget buildStatChip(String label, String value, Color color) {
-      return Expanded(
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(16),
-          ),
+    Color getTextColorForBackground(String label, String value) {
+      if (label == 'Obiettivo' || label.contains('CFU')) {
+        return Colors.blue;
+      }
+      return GradeColors.foreground(value, passingGrade: _passingGrade);
+    }
+
+    return Expanded(
+      child: Card(
+        elevation: 1,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Text(value,
-                  style: theme.textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold, color: color)),
-              const SizedBox(height: 4),
-              Text(label,
+              Text(label, style: Theme.of(context).textTheme.labelMedium),
+              const SizedBox(height: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                decoration: BoxDecoration(
+                  color: customColor != null
+                      ? customColor.withValues(alpha: 0.2)
+                      : getColorForValue(label, value),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  value,
                   textAlign: TextAlign.center,
-                  style: theme.textTheme.labelSmall
-                      ?.copyWith(color: colorScheme.onSurfaceVariant)),
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: customColor ?? getTextColorForBackground(label, value),
+                  ),
+                ),
+              )
             ],
           ),
         ),
-      );
-    }
-
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            buildStatChip('Media\nPonderata', _weightedAverage, colorScheme.primary),
-            const SizedBox(width: 8),
-            buildStatChip(
-                'CFU\nAcquisiti',
-                '$_acquiredCfu / $_totalPlannedCfu',
-                Colors.green),
-            const SizedBox(width: 8),
-            buildStatChip('Previsione\nLaurea', _degreePrediction, Colors.orange),
-          ],
-        ),
       ),
-    ).animate().fadeIn(duration: 300.ms);
-  }
-
-  Widget _buildUniExamList(EducationModeProvider modeProvider) {
-    if (_uniSubjects.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.all(32),
-        child: Center(child: Text('Nessun insegnamento aggiunto.')),
-      );
-    }
-
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final pGrade = _passingGrade;
-
-    return Column(
-      children: _uniSubjects.asMap().entries.map((entry) {
-        final i = entry.key;
-        final subject = entry.value;
-        final gradeDisplay = _uniSubjectGrades[subject.subjectName] ?? '–';
-        final isPending = gradeDisplay == '–';
-        final isIdoneita = gradeDisplay == 'Idon.';
-        final isLode = gradeDisplay == '30L';
-        final Grade? gradeObj = _uniFullGrades[subject.subjectName];
-        String subtitleText = '${subject.cfu} CFU';
-        if (isPending) {
-          subtitleText += ' · Non verbalizzato (Da sostenere)';
-        } else if (gradeObj != null) {
-          if (isIdoneita) {
-            subtitleText += ' · Verbalizzato: Idoneità';
-          } else {
-            subtitleText += ' · Verbalizzato: ${isLode ? "30 e Lode" : "${gradeObj.grade.toInt()}/30"}';
-          }
-          if (gradeObj.type.isNotEmpty && gradeObj.type.toLowerCase() != 'esame') {
-            subtitleText += ' · ${gradeObj.type}';
-          }
-          if (gradeObj.date > 0) {
-            subtitleText += ' (${formatIntDateToDisplay(gradeObj.date)})';
-          }
-        }
-
-        final badgeColor = isPending
-            ? colorScheme.surfaceContainerHighest
-            : GradeColors.background(
-                isIdoneita
-                    ? 'Idon.'
-                    : isLode
-                        ? '30'
-                        : gradeDisplay,
-                passingGrade: pGrade,
-              );
-        final badgeTextColor = isPending
-            ? colorScheme.onSurfaceVariant
-            : isLode
-                ? GradeColors.lode
-                : GradeColors.foreground(
-                    isIdoneita ? 'Idon.' : gradeDisplay,
-                    passingGrade: pGrade,
-                  );
-
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: Container(
-            decoration: BoxDecoration(
-              color: colorScheme.surfaceContainerLow,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: ListTile(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => SubjectDetailPage(subjectName: subject.subjectName),
-                  ),
-                ).then((_) => _loadUniversityStats());
-              },
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              leading: Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: badgeColor,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Center(
-                  child: Text(
-                    gradeDisplay,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: gradeDisplay.length > 2 ? 11 : 16,
-                      color: badgeTextColor,
-                    ),
-                  ),
-                ),
-              ),
-              title: Text(
-                subject.subjectName,
-                style: theme.textTheme.titleSmall
-                    ?.copyWith(fontWeight: FontWeight.bold),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-              subtitle: Text(
-                subtitleText,
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: colorScheme.onSurfaceVariant),
-              ),
-              trailing: Icon(Icons.chevron_right, color: colorScheme.outline),
-            ),
-          ).animate().fadeIn(delay: Duration(milliseconds: 40 * i), duration: 250.ms),
-        );
-      }).toList(),
     );
   }
+
+  Widget _buildUniSummaryCards(EducationModeProvider modeProvider) {
+    return Row(
+      children: [
+        _buildStatCard('Media Ponderata', _weightedAverage),
+        _buildStatCard('CFU Acquisiti', '$_acquiredCfu CFU'),
+        _buildStatCard('Voto Laurea', '$_degreePrediction/110', customColor: Colors.purple),
+      ],
+    );
+  }
+
+
 
   Widget _buildUniversityGradeDistributionChart() {
     final keys = [
@@ -530,26 +453,36 @@ class _StatisticsPageState extends State<StatisticsPage> {
   // ─── Widget: Scuola ───────────────────────────────────────────────────────
 
   Color _getColorForType(String type) {
-    switch (type.toLowerCase()) {
+    switch (type.toLowerCase().trim()) {
       case 'scritto':
         return Colors.blue;
       case 'orale':
         return Colors.green;
+      case 'scritto + orale':
+        return Colors.indigo;
       case 'pratico':
+      case 'pratico / laboratorio':
         return Colors.orange;
+      case 'esame':
+        return Colors.blueAccent;
       default:
         return Colors.purple;
     }
   }
 
   IconData _getIconForType(String type) {
-    switch (type.toLowerCase()) {
+    switch (type.toLowerCase().trim()) {
       case 'scritto':
         return Icons.edit_note;
       case 'orale':
         return Icons.record_voice_over;
+      case 'scritto + orale':
+        return Icons.assignment_turned_in;
       case 'pratico':
+      case 'pratico / laboratorio':
         return Icons.science;
+      case 'esame':
+        return Icons.workspace_premium;
       default:
         return Icons.grade;
     }
@@ -924,20 +857,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
         const Divider(thickness: 1),
         const SizedBox(height: 8),
 
-        // 3. Lista esami
-        Text(
-          'Esami (${_uniSubjects.length})',
-          style: Theme.of(context).textTheme.titleLarge,
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 12),
-        _buildUniExamList(modeProvider),
-
-        const SizedBox(height: 24),
-        const Divider(thickness: 1),
-        const SizedBox(height: 8),
-
-        // 4. Analisi per Tipologia Esame
+        // 3. Analisi per Tipologia Esame
         Text(
           'Analisi per Tipologia Esame',
           style: Theme.of(context).textTheme.titleLarge,

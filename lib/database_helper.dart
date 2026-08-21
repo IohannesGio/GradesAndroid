@@ -1940,25 +1940,38 @@ class DatabaseHelper {
 
   // ---------- GRADE TYPE ANALYSIS FUNCTIONS ----------
 
-  /// Restituisce la media per tipologia di voto (scritto/orale/pratico) per una materia
-  Future<Map<String, double>> getAveragesByType(String subject) async {
+  /// Restituisce la media per tipologia di voto (scritto, orale, pratico, ecc.) per una materia
+  Future<Map<String, double>> getAveragesByType(String subject, {double lodeNumericValue = 30.0}) async {
     final db = await database;
-    final subjectUpper = subject.toUpperCase();
-
     try {
-      final result = await db.rawQuery('''
-        SELECT type, SUM(grade * weight) / SUM(weight) AS average_grade
-        FROM grades
-        WHERE subject_name = ?
-        GROUP BY type
-      ''', [subjectUpper]);
+      final List<Map<String, dynamic>> maps = await db.query(
+        'grades',
+        where: 'subject_name = ?',
+        whereArgs: [subject.toUpperCase()],
+      );
+
+      Map<String, double> typeSum = {};
+      Map<String, double> typeWeightSum = {};
+
+      for (var map in maps) {
+        final g = Grade.fromMap(map);
+        if (g.weight > 0 && !g.isIdoneita) {
+          final normType = g.type.trim();
+          if (normType.isEmpty) continue;
+          double gradeVal = g.grade;
+          if (gradeVal >= 30 && (g.note?.toLowerCase().contains('lode') ?? false)) {
+            gradeVal = lodeNumericValue;
+          }
+          typeSum[normType] = (typeSum[normType] ?? 0.0) + (gradeVal * g.weight);
+          typeWeightSum[normType] = (typeWeightSum[normType] ?? 0.0) + g.weight;
+        }
+      }
 
       Map<String, double> averages = {};
-      for (var row in result) {
-        final type = row['type'] as String;
-        final average = row['average_grade'] as double?;
-        if (average != null) {
-          averages[type] = average;
+      for (var type in typeSum.keys) {
+        final wSum = typeWeightSum[type] ?? 0.0;
+        if (wSum > 0) {
+          averages[type] = typeSum[type]! / wSum;
         }
       }
       return averages;
@@ -1969,22 +1982,33 @@ class DatabaseHelper {
   }
 
   /// Restituisce la media per tipologia di voto per tutte le materie
-  Future<Map<String, double>> getOverallAveragesByType() async {
+  Future<Map<String, double>> getOverallAveragesByType({double lodeNumericValue = 30.0}) async {
     final db = await database;
-
     try {
-      final result = await db.rawQuery('''
-        SELECT type, SUM(grade * weight) / SUM(weight) AS average_grade
-        FROM grades
-        GROUP BY type
-      ''');
+      final List<Map<String, dynamic>> maps = await db.query('grades');
+
+      Map<String, double> typeSum = {};
+      Map<String, double> typeWeightSum = {};
+
+      for (var map in maps) {
+        final g = Grade.fromMap(map);
+        if (g.weight > 0 && !g.isIdoneita) {
+          final normType = g.type.trim();
+          if (normType.isEmpty) continue;
+          double gradeVal = g.grade;
+          if (gradeVal >= 30 && (g.note?.toLowerCase().contains('lode') ?? false)) {
+            gradeVal = lodeNumericValue;
+          }
+          typeSum[normType] = (typeSum[normType] ?? 0.0) + (gradeVal * g.weight);
+          typeWeightSum[normType] = (typeWeightSum[normType] ?? 0.0) + g.weight;
+        }
+      }
 
       Map<String, double> averages = {};
-      for (var row in result) {
-        final type = row['type'] as String;
-        final average = row['average_grade'] as double?;
-        if (average != null) {
-          averages[type] = average;
+      for (var type in typeSum.keys) {
+        final wSum = typeWeightSum[type] ?? 0.0;
+        if (wSum > 0) {
+          averages[type] = typeSum[type]! / wSum;
         }
       }
       return averages;
@@ -1997,35 +2021,18 @@ class DatabaseHelper {
   /// Restituisce il conteggio di voti per tipologia
   Future<Map<String, int>> getGradeCountByType(String? subject) async {
     final db = await database;
-
     try {
-      String query;
-      List<dynamic> args;
-
-      if (subject != null) {
-        query = '''
-          SELECT type, COUNT(*) as count
-          FROM grades
-          WHERE subject_name = ?
-          GROUP BY type
-        ''';
-        args = [subject.toUpperCase()];
-      } else {
-        query = '''
-          SELECT type, COUNT(*) as count
-          FROM grades
-          GROUP BY type
-        ''';
-        args = [];
-      }
-
-      final result = await db.rawQuery(query, args);
+      final List<Map<String, dynamic>> maps = subject != null
+          ? await db.query('grades', where: 'subject_name = ?', whereArgs: [subject.toUpperCase()])
+          : await db.query('grades');
 
       Map<String, int> counts = {};
-      for (var row in result) {
-        final type = row['type'] as String;
-        final count = row['count'] as int;
-        counts[type] = count;
+      for (var map in maps) {
+        final g = Grade.fromMap(map);
+        final normType = g.type.trim();
+        if (normType.isNotEmpty) {
+          counts[normType] = (counts[normType] ?? 0) + 1;
+        }
       }
       return counts;
     } catch (e) {
