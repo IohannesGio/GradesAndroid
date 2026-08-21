@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 import '../database_helper.dart';
 import '../providers/education_mode_provider.dart';
+import '../utils/grade_colors.dart';
 import '../widgets/smart_import_dialog.dart';
 import 'subject_detail_page.dart';
 
@@ -322,21 +323,11 @@ class _HomePageState extends State<HomePage> {
     final modeProvider = Provider.of<EducationModeProvider>(context);
     final isUni = modeProvider.isUniversity;
 
-    Color getColorForValue(String value) {
-      if (value == 'Idon.') return Colors.blue.withOpacity(0.15);
-      double? val = double.tryParse(value);
-      if (val == null) return Colors.grey.withOpacity(0.2);
-      return val >= _passingGrade
-          ? Colors.green.withOpacity(0.2)
-          : Colors.red.withOpacity(0.2);
-    }
+    Color getColorForValue(String value) =>
+        GradeColors.background(value, passingGrade: _passingGrade);
 
-    Color getTextColorForBackground(String value) {
-      if (value == 'Idon.') return Colors.blue;
-      double? val = double.tryParse(value);
-      if (val == null) return Colors.grey;
-      return val >= _passingGrade ? Colors.green : Colors.red;
-    }
+    Color getTextColorForBackground(String value) =>
+        GradeColors.foreground(value, passingGrade: _passingGrade);
 
     return Scaffold(
       appBar: AppBar(

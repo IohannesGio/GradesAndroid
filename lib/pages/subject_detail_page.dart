@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../database_helper.dart';
 import '../providers/education_mode_provider.dart';
 import '../utils/date_utils.dart';
+import '../utils/grade_colors.dart';
 import 'settings_page.dart';
 
 class SubjectDetailPage extends StatefulWidget {
@@ -117,6 +118,11 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
     double gradeVal = existing != null ? existing.grade : 28.0;
     bool isLode = existing?.note?.contains('30L') ?? false;
     bool isIdoneita = existing?.note?.contains('Idoneità') ?? false;
+    String selectedUniExamType = existing?.type ?? 'scritto + orale';
+    final validTypes = ['orale', 'scritto', 'scritto + orale', 'pratico', 'altro'];
+    if (!validTypes.contains(selectedUniExamType.toLowerCase())) {
+      selectedUniExamType = 'scritto + orale';
+    }
 
     if (existing?.date != null) {
       _dateController.text = formatIntDateToDisplay(existing!.date);
@@ -200,6 +206,25 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
                     ],
 
                     const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      value: selectedUniExamType,
+                      decoration: InputDecoration(
+                        labelText: 'Tipologia Esame',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      items: const [
+                        DropdownMenuItem(value: 'orale', child: Text('Orale')),
+                        DropdownMenuItem(value: 'scritto', child: Text('Scritto')),
+                        DropdownMenuItem(value: 'scritto + orale', child: Text('Scritto + Orale')),
+                        DropdownMenuItem(value: 'pratico', child: Text('Pratico / Laboratorio')),
+                        DropdownMenuItem(value: 'altro', child: Text('Altro / Tirocinio')),
+                      ],
+                      onChanged: (val) {
+                        if (val != null) setState(() => selectedUniExamType = val);
+                      },
+                    ),
+
+                    const SizedBox(height: 12),
                     TextField(
                       controller: _dateController,
                       decoration: InputDecoration(
@@ -251,7 +276,7 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
                         finalGrade,
                         dateForSaving,
                         1.0,
-                        'esame',
+                        selectedUniExamType,
                         note: noteText,
                       );
                     } else {
@@ -261,7 +286,7 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
                         'grade': finalGrade,
                         'date': dateForSaving,
                         'grade_weight': 1.0,
-                        'type': 'esame',
+                        'type': selectedUniExamType,
                         'note': noteText,
                       });
                     }
@@ -560,23 +585,17 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
 
   Widget _buildStatCard(String label, String value, {VoidCallback? onTap}) {
     Color getColorForValue(String label, String value) {
-      double? val = double.tryParse(value);
-      if (val == null) return Colors.grey.withOpacity(0.2);
       if (label == 'Obiettivo' || label == 'CFU') {
-        return Colors.blue.withOpacity(0.2);
+        return Colors.blue.withValues(alpha: 0.2);
       }
-      return val >= _passingGrade
-          ? Colors.green.withOpacity(0.2)
-          : Colors.red.withOpacity(0.2);
+      return GradeColors.background(value, passingGrade: _passingGrade);
     }
 
     Color getTextColorForBackground(String label, String value) {
-      double? val = double.tryParse(value);
-      if (val == null) return Colors.grey;
       if (label == 'Obiettivo' || label == 'CFU') {
         return Colors.blue;
       }
-      return val >= _passingGrade ? Colors.green : Colors.red;
+      return GradeColors.foreground(value, passingGrade: _passingGrade);
     }
 
     return Expanded(
