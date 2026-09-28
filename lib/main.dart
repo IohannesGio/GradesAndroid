@@ -83,21 +83,9 @@ class MainNavigation extends StatefulWidget {
 
 class _MainNavigationState extends State<MainNavigation> {
   int _currentIndex = 0;
-  // Contatore dedicato per le statistiche: incrementa solo quando si naviga alla scheda stats
-  int _statsRefreshCounter = 0;
-  // Contatore dedicato per la home: incrementa solo quando si naviga alla scheda home
-  int _homeRefreshCounter = 0;
 
   void _onTabSelected(int index) {
     setState(() {
-      if (index == 1 && _currentIndex != 1) {
-        // Navigato ALLA scheda statistiche -> forza ricreazione con nuovo counter
-        _statsRefreshCounter++;
-      }
-      if (index == 0 && _currentIndex != 0) {
-        // Navigato ALLA scheda home -> forza ricreazione con nuovo counter
-        _homeRefreshCounter++;
-      }
       _currentIndex = index;
     });
   }
@@ -111,8 +99,8 @@ class _MainNavigationState extends State<MainNavigation> {
       body: IndexedStack(
         index: _currentIndex,
         children: [
-          HomePage(key: ValueKey('home_${_homeRefreshCounter}_$isUni')),
-          StatisticsPage(key: ValueKey('stats_${_statsRefreshCounter}_$isUni')),
+          HomePage(key: ValueKey('home_$isUni')),
+          StatisticsPage(key: ValueKey('stats_$isUni')),
           const DiaryPage(),
           const SettingsPage(),
         ],

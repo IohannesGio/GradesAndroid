@@ -16,6 +16,7 @@ class Subject {
   final double? objective;
   final int cfu;
   final String status;
+  final int? examDate; // YYYYMMDD
 
   Subject({
     this.id,
@@ -23,6 +24,7 @@ class Subject {
     this.objective,
     this.cfu = 6,
     this.status = 'planned',
+    this.examDate,
   });
 
   Map<String, dynamic> toMap() {
@@ -32,6 +34,7 @@ class Subject {
       'objective': objective,
       'cfu': cfu,
       'status': status,
+      'exam_date': examDate,
     };
   }
 
@@ -42,12 +45,13 @@ class Subject {
       objective: map['objective'] as double?,
       cfu: (map['cfu'] as int?) ?? 6,
       status: (map['status'] as String?) ?? 'planned',
+      examDate: map['exam_date'] as int?,
     );
   }
 
   @override
   String toString() {
-    return 'Subject{id: $id, subjectName: $subjectName, objective: $objective, cfu: $cfu, status: $status}';
+    return 'Subject{id: $id, subjectName: $subjectName, objective: $objective, cfu: $cfu, status: $status, examDate: $examDate}';
   }
 }
 
@@ -341,26 +345,36 @@ class DatabaseHelper {
   Future<void> _ensureSchemaUpToDate(Database db) async {
     try {
       final gradesInfo = await db.rawQuery('PRAGMA table_info(grades)');
-      bool hasNote = gradesInfo.any((column) => column['name'] == 'note');
-      if (!hasNote) {
-        await db.execute('ALTER TABLE grades ADD COLUMN note TEXT');
+      final columnNames = gradesInfo.map((c) => c['name']?.toString().toLowerCase()).toSet();
+      if (!columnNames.contains('note')) {
+        try {
+          await db.execute('ALTER TABLE grades ADD COLUMN note TEXT');
+        } catch (_) {}
       }
     } catch (e) {
-      print('Schema migration error for grades note column: $e');
+      print('Schema migration error for grades: $e');
     }
 
     try {
       final subjectInfo = await db.rawQuery('PRAGMA table_info(subject_list)');
-      bool hasCfu = subjectInfo.any((column) => column['name'] == 'cfu');
-      if (!hasCfu) {
-        await db.execute('ALTER TABLE subject_list ADD COLUMN cfu INTEGER DEFAULT 6');
+      final columnNames = subjectInfo.map((c) => c['name']?.toString().toLowerCase()).toSet();
+      if (!columnNames.contains('cfu')) {
+        try {
+          await db.execute('ALTER TABLE subject_list ADD COLUMN cfu INTEGER DEFAULT 6');
+        } catch (_) {}
       }
-      bool hasStatus = subjectInfo.any((column) => column['name'] == 'status');
-      if (!hasStatus) {
-        await db.execute("ALTER TABLE subject_list ADD COLUMN status TEXT DEFAULT 'planned'");
+      if (!columnNames.contains('status')) {
+        try {
+          await db.execute("ALTER TABLE subject_list ADD COLUMN status TEXT DEFAULT 'planned'");
+        } catch (_) {}
+      }
+      if (!columnNames.contains('exam_date')) {
+        try {
+          await db.execute('ALTER TABLE subject_list ADD COLUMN exam_date INTEGER');
+        } catch (_) {}
       }
     } catch (e) {
-      print('Schema migration error for subject_list columns: $e');
+      print('Schema migration error for subject_list: $e');
     }
   }
 
@@ -371,7 +385,8 @@ class DatabaseHelper {
         subject TEXT UNIQUE,
         objective REAL,
         cfu INTEGER DEFAULT 6,
-        status TEXT DEFAULT 'planned'
+        status TEXT DEFAULT 'planned',
+        exam_date INTEGER
       )
     ''');
     await db.execute('''
@@ -433,21 +448,37 @@ class DatabaseHelper {
 
   // ---------- GET FUNCTIONS ----------
 
-  Future<String> getDatabasePath() async {
-    var databasesPath = await getApplicationDocumentsDirectory();
-    return join(databasesPath.path, 'grades.sqlite3');
+  Future<String> getDatabasePath({String? specificDbName}) async {
+    final documentsDirectory = await getApplicationDocumentsDirectory();
+    if (specificDbName != null) {
+      return join(documentsDirectory.path, specificDbName);
+    }
+    final prefs = await SharedPreferences.getInstance();
+    final modeStr = prefs.getString('education_mode') ?? 'school';
+    final isUni = modeStr == 'university';
+    final dbName = isUni ? _universityDbName : _schoolDbName;
+    return join(documentsDirectory.path, dbName);
   }
 
   Future<String> exportDatabase() async {
     try {
+      final db = await database;
+      // Forza il flush delle transazioni WAL nel file principale prima di esportare
+      try {
+        await db.rawQuery('PRAGMA wal_checkpoint(FULL)');
+      } catch (_) {}
+
       final String dbPath = await getDatabasePath();
       final File dbFile = File(dbPath);
 
       if (!await dbFile.exists()) {
-        return "Errore: il file del database non è stato trovato.";
+        return "Errore: il file del database non è stato trovato ($dbPath).";
       }
 
-      final String exportFileName = 'grades.sqlite3';
+      final prefs = await SharedPreferences.getInstance();
+      final modeStr = prefs.getString('education_mode') ?? 'school';
+      final isUni = modeStr == 'university';
+      final String exportFileName = isUni ? _universityDbName : _schoolDbName;
 
       if (Platform.isLinux || Platform.isWindows || Platform.isMacOS) {
         final FileSaveLocation? saveLocation = await getSaveLocation(
@@ -457,13 +488,28 @@ class DatabaseHelper {
         if (path == null) {
           return "Operazione annullata.";
         }
-        await dbFile.copy(path);
+
+        final destFile = File(path);
+        if (await destFile.exists()) {
+          try {
+            await destFile.delete();
+          } catch (_) {}
+        }
+
+        try {
+          await dbFile.copy(path);
+        } catch (copyErr) {
+          // Fallback se il file è bloccato da SQLite su Windows
+          final bytes = await dbFile.readAsBytes();
+          await destFile.writeAsBytes(bytes, flush: true);
+        }
+
         return "Backup esportato in:\n$path";
       } else {
         final XFile fileToShare = XFile(dbPath, name: exportFileName);
         final result = await Share.shareXFiles(
           [fileToShare],
-          text: 'Backup del database',
+          text: 'Backup del database ($exportFileName)',
         );
         if (result.status == ShareResultStatus.success) {
           return "Operazione completata!";
@@ -473,26 +519,53 @@ class DatabaseHelper {
       }
     } catch (e) {
       print("Errore durante l'esportazione del database: $e");
-      return "Si è verificato un errore durante l'esportazione.";
+      return "Si è verificato un errore durante l'esportazione: $e";
     }
   }
 
   Future<String> importDatabase(String sourcePath) async {
     try {
-      final String dbPath = await getDatabasePath();
       final File sourceFile = File(sourcePath);
 
       if (!await sourceFile.exists()) {
         return "Errore: file non trovato.";
       }
 
+      final String dbPath = await getDatabasePath();
+      final File destDbFile = File(dbPath);
+
+      // Chiudi le connessioni esistenti prima di sovrascrivere
       await resetConnections();
 
-      await sourceFile.copy(dbPath);
+      // Rimuovi eventuali file -wal e -shm residui per evitare corruzioni
+      final walFile = File('$dbPath-wal');
+      final shmFile = File('$dbPath-shm');
+      if (await walFile.exists()) {
+        try {
+          await walFile.delete();
+        } catch (_) {}
+      }
+      if (await shmFile.exists()) {
+        try {
+          await shmFile.delete();
+        } catch (_) {}
+      }
+
+      try {
+        await sourceFile.copy(dbPath);
+      } catch (_) {
+        final bytes = await sourceFile.readAsBytes();
+        await destDbFile.writeAsBytes(bytes, flush: true);
+      }
+
+      // Riapri la connessione e applica eventuali migrazioni
+      final db = await database;
+      await _ensureSchemaUpToDate(db);
+
       return "Database importato con successo!";
     } catch (e) {
       print("Errore durante l'importazione del database: $e");
-      return "Si è verificato un errore durante l'importazione.";
+      return "Si è verificato un errore durante l'importazione: $e";
     }
   }
 
@@ -1715,6 +1788,22 @@ class DatabaseHelper {
       return true;
     } catch (e) {
       print('Errore in updateSubjectStatus: $e');
+      return false;
+    }
+  }
+
+  Future<bool> updateSubjectExamDate(String subject, int? examDate) async {
+    final db = await database;
+    try {
+      await db.update(
+        'subject_list',
+        {'exam_date': examDate},
+        where: 'subject = ?',
+        whereArgs: [subject.toUpperCase()],
+      );
+      return true;
+    } catch (e) {
+      print('Errore in updateSubjectExamDate: $e');
       return false;
     }
   }

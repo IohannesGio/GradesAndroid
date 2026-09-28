@@ -26,9 +26,6 @@ class _DiaryPageState extends State<DiaryPage> {
   Map<DateTime, List<CalendarEvent>> _events = {};
   Map<DateTime, List<Grade>> _grades = {};
 
-  List<CalendarEvent> _selectedEvents = [];
-  List<Grade> _selectedGrades = [];
-
   @override
   void initState() {
     super.initState();
@@ -104,13 +101,8 @@ class _DiaryPageState extends State<DiaryPage> {
   }
 
   void _updateSelectedItems() {
-    if (_selectedDay != null && mounted) {
-      setState(() {
-        final DateTime kDay = DateTime.utc(
-            _selectedDay!.year, _selectedDay!.month, _selectedDay!.day);
-        _selectedEvents = _events[kDay] ?? [];
-        _selectedGrades = _grades[kDay] ?? [];
-      });
+    if (mounted) {
+      setState(() {});
     }
   }
 
@@ -448,8 +440,9 @@ class _DiaryPageState extends State<DiaryPage> {
     final isUni = modeProvider.isUniversity;
 
     return Scaffold(
-      appBar: AppBar(title: Text(isUni ? 'Appelli & Orario' : 'Diario e Orario')),
-      body: SingleChildScrollView(
+      body: SafeArea(
+        bottom: false,
+        child: SingleChildScrollView(
         child: Column(
           children: [
             Padding(
@@ -571,6 +564,7 @@ class _DiaryPageState extends State<DiaryPage> {
             ),
           ],
         ),
+      ),
       ),
     );
   }

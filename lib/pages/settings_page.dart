@@ -369,10 +369,11 @@ class _SettingsPageState extends State<SettingsPage> {
     final isUni = modeProvider.isUniversity;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Impostazioni')),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: ListView(
+      body: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: ListView(
           children: [
             // --- SECTION 1: PERCORSO DI STUDI ---
             Row(
@@ -686,6 +687,7 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
           ],
         ),
+      ),
       ),
     );
   }

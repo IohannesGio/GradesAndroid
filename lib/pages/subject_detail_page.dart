@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 import '../database_helper.dart';
 import '../providers/education_mode_provider.dart';
+import '../services/widget_service.dart';
 import '../utils/date_utils.dart';
 import '../utils/grade_colors.dart';
 import 'settings_page.dart';
@@ -301,9 +303,11 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
           },
         );
       },
-    ).then((result) {
+    ).then((result) async {
       if (result == true) {
         _loadSubjectData();
+        await WidgetService.updateNextExamWidget();
+        HapticFeedback.mediumImpact();
       }
     });
   }
@@ -545,6 +549,42 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
   void _deleteGrade(int id) async {
     await dbHelper.deleteGrade(id);
     _loadSubjectData();
+    await WidgetService.updateNextExamWidget();
+    HapticFeedback.lightImpact();
+  }
+
+  Future<void> _pickExamDate() async {
+    DateTime initial = DateTime.now();
+    if (_subjectDetails?.examDate != null) {
+      final dateInt = _subjectDetails!.examDate!;
+      final y = dateInt ~/ 10000;
+      final m = (dateInt ~/ 100) % 100;
+      final d = dateInt % 100;
+      initial = DateTime(y, m, d);
+    }
+
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: DateTime.now().subtract(const Duration(days: 365)),
+      lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
+      helpText: 'SELEZIONA DATA PROSSIMO APPELLO',
+    );
+
+    if (picked != null) {
+      final dateInt = int.parse(DateFormat('yyyyMMdd').format(picked));
+      await dbHelper.updateSubjectExamDate(widget.subjectName, dateInt);
+      await _loadSubjectData();
+      await WidgetService.updateNextExamWidget();
+      HapticFeedback.lightImpact();
+    }
+  }
+
+  Future<void> _clearExamDate() async {
+    await dbHelper.updateSubjectExamDate(widget.subjectName, null);
+    await _loadSubjectData();
+    await WidgetService.updateNextExamWidget();
+    HapticFeedback.lightImpact();
   }
 
   void _confirmDeleteSubject() {
@@ -643,7 +683,7 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.subjectName),
+        title: Text(widget.subjectName, overflow: TextOverflow.ellipsis),
         actions: [
           IconButton(
             icon: const Icon(Icons.edit_outlined),
@@ -667,6 +707,99 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
     );
   }
 
+  Widget _buildExamDateSection() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final examDateInt = _subjectDetails?.examDate;
+
+    if (examDateInt == null) {
+      return OutlinedButton.icon(
+        onPressed: _pickExamDate,
+        icon: const Icon(Icons.event_outlined, size: 18),
+        label: const Text('Pianifica Data Appello'),
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+    }
+
+    final year = examDateInt ~/ 10000;
+    final month = (examDateInt ~/ 100) % 100;
+    final day = examDateInt % 100;
+    final examDate = DateTime(year, month, day);
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final diff = examDate.difference(today).inDays;
+
+    String countdownLabel;
+    Color countdownColor;
+    if (diff < 0) {
+      countdownLabel = 'Appello passato (${diff.abs()} gg fa)';
+      countdownColor = Colors.grey;
+    } else if (diff == 0) {
+      countdownLabel = 'Appello OGGI!';
+      countdownColor = Colors.orange;
+    } else if (diff == 1) {
+      countdownLabel = 'Appello DOMANI!';
+      countdownColor = Colors.amber.shade800;
+    } else {
+      countdownLabel = 'Tra $diff giorni';
+      countdownColor = colorScheme.primary;
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: colorScheme.outlineVariant),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: colorScheme.primary.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(Icons.event, color: colorScheme.primary, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Data Appello: ${DateFormat('d MMMM yyyy', 'it_IT').format(examDate)}',
+                  style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  countdownLabel,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: countdownColor,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.edit_calendar, size: 18),
+            tooltip: 'Modifica data',
+            onPressed: _pickExamDate,
+          ),
+          IconButton(
+            icon: const Icon(Icons.close, size: 18),
+            tooltip: 'Rimuovi data',
+            onPressed: _clearExamDate,
+          ),
+        ],
+      ),
+    );
+  }
+
   /// Vista Università: Scheda Singola Verbalizzazione Esame
   Widget _buildUniversityView() {
     final theme = Theme.of(context);
@@ -675,8 +808,8 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
     final hasGrade = _grades.isNotEmpty;
     final Grade? examGrade = hasGrade ? _grades.first : null;
 
-    final bool isLode = examGrade?.note?.contains('30L') ?? false;
-    final bool isIdoneita = examGrade?.note?.contains('Idoneità') ?? false;
+    final bool isLode = examGrade?.isLode ?? false;
+    final bool isIdoneita = examGrade?.isIdoneita ?? false;
 
     String displayGradeText = 'Non verbalizzato';
     if (hasGrade) {
@@ -789,13 +922,50 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
                         const SizedBox(height: 8),
 
                         if (hasGrade) ...[
-                          Text(
-                            displayGradeText,
-                            style: theme.textTheme.displayMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: isIdoneita ? colorScheme.primary : Colors.green,
+                          if (isLode) ...[
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: [Color(0xFFFFB300), Color(0xFFFF8F00)],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                borderRadius: BorderRadius.circular(16),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(0xFFFF8F00).withValues(alpha: 0.3),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.workspace_premium, color: Colors.white, size: 28),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    '30 e Lode',
+                                    style: TextStyle(
+                                      fontSize: 26,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
+                          ] else ...[
+                            Text(
+                              displayGradeText,
+                              style: theme.textTheme.displayMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: isIdoneita ? colorScheme.primary : Colors.green,
+                              ),
+                            ),
+                          ],
                           const SizedBox(height: 8),
                           Text(
                             'Data verbalizzazione: ${formatIntDateToDisplay(examGrade!.date)}',
@@ -827,6 +997,8 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
                               color: colorScheme.onSurfaceVariant,
                             ),
                           ),
+                          const SizedBox(height: 16),
+                          _buildExamDateSection(),
                         ],
 
                         const SizedBox(height: 24),
@@ -863,14 +1035,17 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
                             ],
                           ),
                         ] else ...[
-                          FilledButton.icon(
-                            onPressed: () => _showUniExamGradeDialog(),
-                            icon: const Icon(Icons.add_task),
-                            label: const Text('Registra Voto Esame'),
-                            style: FilledButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
+                          SizedBox(
+                            width: double.infinity,
+                            child: FilledButton.icon(
+                              onPressed: () => _showUniExamGradeDialog(),
+                              icon: const Icon(Icons.add_task),
+                              label: const Text('Registra Voto Esame'),
+                              style: FilledButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
                               ),
                             ),
                           ),

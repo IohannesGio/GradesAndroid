@@ -938,25 +938,21 @@ class _StatisticsPageState extends State<StatisticsPage> {
     final isUni = modeProvider.isUniversity;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Statistiche'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Aggiorna',
-            onPressed: () => isUni
-                ? _loadUniversityStats()
-                : _loadSchoolChartData(),
-          ),
-        ],
+      body: SafeArea(
+        bottom: false,
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : _errorMessage != null
+                ? Center(child: Text('Errore: $_errorMessage'))
+                : RefreshIndicator(
+                    onRefresh: () async => isUni
+                        ? _loadUniversityStats()
+                        : _loadSchoolChartData(),
+                    child: isUni
+                        ? _buildUniversityBody(modeProvider)
+                        : _buildSchoolBody(),
+                  ),
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _errorMessage != null
-              ? Center(child: Text('Errore: $_errorMessage'))
-              : isUni
-                  ? _buildUniversityBody(modeProvider)
-                  : _buildSchoolBody(),
     );
   }
 
